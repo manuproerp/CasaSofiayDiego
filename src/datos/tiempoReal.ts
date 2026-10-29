@@ -15,6 +15,10 @@ const TABLAS: Record<string, readonly (readonly string[])[]> = {
   fondos_aportes: [CLAVES.aportes],
   wishlist: [CLAVES.wishlist, CLAVES.wishlistAprobaciones],
   wishlist_aprobaciones: [CLAVES.wishlistAprobaciones, CLAVES.wishlist],
+  recetas: [CLAVES.recetas],
+  receta_ingredientes: [CLAVES.recetas],
+  menu: [CLAVES.menu],
+  super_items: [CLAVES.super],
 }
 
 /** Mantiene la tablet y los celulares sincronizados sin recargar */

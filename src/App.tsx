@@ -12,9 +12,12 @@ import { Acceso, NuevaContrasena } from '@/paginas/Acceso'
 import { Ajustes } from '@/paginas/Ajustes'
 import { Gastos } from '@/paginas/Gastos'
 import { Inicio } from '@/paginas/Inicio'
+import { Menu } from '@/paginas/Menu'
 import { Metas } from '@/paginas/Metas'
 import { PorAprobar } from '@/paginas/PorAprobar'
 import { Presupuesto } from '@/paginas/Presupuesto'
+import { Recetas } from '@/paginas/Recetas'
+import { Super } from '@/paginas/Super'
 import { Wishlist } from '@/paginas/Wishlist'
 
 function Pantalla({ children }: { children: React.ReactNode }) {
@@ -74,6 +77,9 @@ function AppConSesion() {
             <Route path="/wishlist" element={<Wishlist />} />
             <Route path="/metas" element={<Metas />} />
             <Route path="/aprobaciones" element={<PorAprobar />} />
+            <Route path="/menu" element={<Menu />} />
+            <Route path="/recetas" element={<Recetas />} />
+            <Route path="/super" element={<Super />} />
             <Route path="/ajustes" element={<Ajustes />} />
             <Route
               path="*"

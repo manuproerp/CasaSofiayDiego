@@ -1,4 +1,4 @@
-import { ArrowRight, CalendarCheck, CheckCircle, GearSix, Plus, Receipt, Target, Wallet } from '@phosphor-icons/react'
+import { ArrowRight, CalendarCheck, CheckCircle, GearSix, Plus, Receipt, ShoppingCart, Target, Wallet } from '@phosphor-icons/react'
 import { useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { ListaAprobaciones, usePorAprobar } from '@/componentes/gastos/Aprobaciones'
@@ -9,11 +9,12 @@ import { TipoCambioRapido } from '@/componentes/TipoCambioRapido'
 import { Boton, cx, Esqueleto, ErrorEnLinea, Etiqueta, Tarjeta, Vacio } from '@/componentes/ui/base'
 import { Avatar, Barra, Monto } from '@/componentes/ui/datos'
 import { IconoCategoria } from '@/componentes/ui/iconos'
-import { useMapaCategorias, usePersonas, useYo } from '@/datos/consultas'
+import { useMapaCategorias, useMenuRango, usePersonas, useRecetas, useSuper, useYo } from '@/datos/consultas'
 import { useMes } from '@/datos/mes'
 import { useApartados, useResumenMes } from '@/datos/resumen'
 import { semaforo } from '@/lib/calculos'
-import { diasEnMes, dinero, fechaLarga, nombreMes, partesHoy, plazo, saludo } from '@/lib/formato'
+import { COMIDAS } from '@/lib/cocina'
+import { diasEnMes, dinero, fechaLarga, hoyISO, nombreMes, partesHoy, plazo, saludo } from '@/lib/formato'
 import type { Gasto } from '@/lib/tipos'
 
 function Titulo({ children, a, texto = 'Ver todo' }: { children: React.ReactNode; a?: string; texto?: string }) {
@@ -40,6 +41,11 @@ export function Inicio() {
   const { items: porAprobar } = usePorAprobar()
   const { resumen, mesadas, gastos, cargando, error, reintentar } = useResumenMes(anio, mes)
   const apartados = useApartados(anio, mes)
+  const hoyIso = hoyISO()
+  const menuHoy = useMenuRango(hoyIso, hoyIso)
+  const { data: recetas = [] } = useRecetas()
+  const { data: listaSuper = [] } = useSuper()
+  const superPendientes = listaSuper.filter((i) => !i.comprado).length
   const [editando, setEditando] = useState<Gasto | null>(null)
 
   const hoy = partesHoy()
@@ -171,7 +177,7 @@ export function Inicio() {
         </Tarjeta>
 
         {/* Categorías en alerta */}
-        <Tarjeta className="entrar flex flex-col gap-4 p-6 max-md:order-2" style={{ ['--i' as string]: 2 }}>
+        <Tarjeta className="entrar flex flex-col gap-4 p-6 max-md:order-3" style={{ ['--i' as string]: 2 }}>
           <Titulo a="/presupuesto" texto="Presupuesto">
             Cómo van las categorías
           </Titulo>
@@ -208,8 +214,51 @@ export function Inicio() {
           )}
         </Tarjeta>
 
+        {/* Hoy en la cocina */}
+        <Tarjeta className="entrar flex flex-col gap-4 p-6 max-md:order-1" style={{ ['--i' as string]: 3 }}>
+          <Titulo a="/menu" texto="Menú">
+            Hoy se come
+          </Titulo>
+          {menuHoy.isLoading ? (
+            <Esqueleto className="h-24" />
+          ) : (
+            <ul className="flex flex-col gap-2.5">
+              {COMIDAS.map((c) => {
+                const e = (menuHoy.data ?? []).filter((m) => m.comida === c.valor)
+                if (!e.length && c.valor === 'lonchera') return null
+                return (
+                  <li key={c.valor} className="grid grid-cols-[72px_1fr] items-baseline gap-2 text-sm">
+                    <span className="text-[12px] font-medium text-texto-3">{c.texto}</span>
+                    <span className={cx('font-medium', !e.length && 'font-normal text-texto-3')}>
+                      {e.length
+                        ? e.map((m) => (m.receta_id ? (recetas.find((r) => r.id === m.receta_id)?.nombre ?? '—') : m.texto)).join(' / ')
+                        : 'Sin definir'}
+                    </span>
+                  </li>
+                )
+              })}
+            </ul>
+          )}
+          <Link
+            to="/super"
+            className="flex items-center justify-between rounded-control bg-superficie-2 px-4 py-3 text-sm hover:bg-borde"
+          >
+            <span className="flex items-center gap-2">
+              <ShoppingCart size={18} className="text-v500" />
+              {superPendientes ? (
+                <span>
+                  <span className="num font-semibold">{superPendientes}</span> en la lista del súper
+                </span>
+              ) : (
+                'Lista del súper al día'
+              )}
+            </span>
+            <ArrowRight size={16} />
+          </Link>
+        </Tarjeta>
+
         {/* Mesadas */}
-        <Tarjeta className="entrar flex flex-col gap-4 p-6 max-md:order-3" style={{ ['--i' as string]: 3 }}>
+        <Tarjeta className="entrar flex flex-col gap-4 p-6 max-md:order-5" style={{ ['--i' as string]: 3 }}>
           <h2 className="font-semibold tracking-tight">Mesadas</h2>
           {mesadas.length === 0 ? (
             <Esqueleto className="h-16" />
@@ -248,7 +297,7 @@ export function Inicio() {
         </Tarjeta>
 
         {/* Últimos gastos */}
-        <Tarjeta className="entrar flex flex-col gap-3 p-6 max-md:order-4 md:row-span-2" style={{ ['--i' as string]: 4 }}>
+        <Tarjeta className="entrar flex flex-col gap-3 p-6 max-md:order-6 md:row-span-2" style={{ ['--i' as string]: 4 }}>
           <Titulo a="/gastos">Últimos gastos</Titulo>
           {cargando ? (
             <div className="flex flex-col gap-3">
@@ -286,7 +335,7 @@ export function Inicio() {
         </Tarjeta>
 
         {/* Apartados: próximos vencimientos y metas */}
-        <Tarjeta className="entrar flex flex-col gap-4 p-6 max-md:order-1" style={{ ['--i' as string]: 5 }}>
+        <Tarjeta className="entrar flex flex-col gap-4 p-6 max-md:order-2" style={{ ['--i' as string]: 5 }}>
           <Titulo a="/presupuesto?vista=anuales" texto="Anuales">
             Lo que viene
           </Titulo>
@@ -334,7 +383,7 @@ export function Inicio() {
           )}
         </Tarjeta>
 
-        <Tarjeta className="entrar flex flex-col gap-4 p-6 max-md:order-5" style={{ ['--i' as string]: 6 }}>
+        <Tarjeta className="entrar flex flex-col gap-4 p-6 max-md:order-7" style={{ ['--i' as string]: 6 }}>
           <TipoCambioRapido />
           <div className="flex items-center gap-3 border-t border-borde pt-4">
             <span className="flex size-10 shrink-0 items-center justify-center rounded-[12px] bg-primario-suave text-primario">

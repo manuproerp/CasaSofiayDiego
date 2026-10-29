@@ -1,4 +1,4 @@
-import { ChartPieSlice, GearSix, House, ListHeart, Plus, Receipt, Target, Tray, Wallet, type Icon } from '@phosphor-icons/react'
+import { BookOpen, CalendarBlank, ChartPieSlice, CookingPot, GearSix, House, ListHeart, Plus, Receipt, ShoppingCart, Target, Tray, Wallet, type Icon } from '@phosphor-icons/react'
 import type { ReactNode } from 'react'
 import { Link, NavLink, useLocation } from 'react-router-dom'
 import { usePorAprobar } from '@/componentes/gastos/Aprobaciones'
@@ -25,8 +25,12 @@ const NAV: ItemNav[] = [
   { a: '/presupuesto', texto: 'Presupuesto', icono: ChartPieSlice, grupo: 'Dinero', conMes: true },
   { a: '/wishlist', texto: 'Wishlist', icono: ListHeart, grupo: 'Dinero' },
   { a: '/metas', texto: 'Metas', icono: Target, grupo: 'Dinero', conMes: true },
+  { a: '/menu', texto: 'Menú', icono: CalendarBlank, grupo: 'Cocina' },
+  { a: '/recetas', texto: 'Recetas', icono: BookOpen, grupo: 'Cocina' },
+  { a: '/super', texto: 'Súper', icono: ShoppingCart, grupo: 'Cocina' },
 ]
 const RUTAS_DINERO = ['/gastos', '/presupuesto', '/wishlist', '/metas']
+const RUTAS_COCINA = ['/menu', '/recetas', '/super']
 
 function Insignia({ n, className }: { n: number; className?: string }) {
   if (!n) return null
@@ -94,7 +98,7 @@ function BarraLateral() {
   return (
     <aside className="sticky top-0 hidden h-[100dvh] w-[96px] shrink-0 flex-col bg-hero px-3 pt-6 pb-5 md:flex lg:w-[248px] lg:px-4">
       <Marca />
-      <nav className="mt-8 flex flex-1 flex-col gap-1.5" aria-label="Principal">
+      <nav className="-mx-1 mt-6 flex min-h-0 flex-1 flex-col gap-1.5 overflow-y-auto px-1 pb-2" aria-label="Principal">
         {grupos.map((g) => (
           <div key={g} className="flex flex-col gap-1.5">
             {g && (
@@ -128,12 +132,11 @@ function BarraLateral() {
 function BarraInferior() {
   const registrar = useRegistrarGasto()
   const { pathname } = useLocation()
-  const { items: pendientes } = usePorAprobar()
   const items: ({ a: string; texto: string; icono: Icon; activo: boolean; n?: number } | null)[] = [
     { a: '/', texto: 'Inicio', icono: House, activo: pathname === '/' },
     { a: '/gastos', texto: 'Dinero', icono: Wallet, activo: RUTAS_DINERO.some((r) => pathname.startsWith(r)) },
     null,
-    { a: '/aprobaciones', texto: 'Aprobar', icono: Tray, activo: pathname.startsWith('/aprobaciones'), n: pendientes.length },
+    { a: '/menu', texto: 'Cocina', icono: CookingPot, activo: RUTAS_COCINA.some((r) => pathname.startsWith(r)) },
     { a: '/ajustes', texto: 'Ajustes', icono: GearSix, activo: pathname.startsWith('/ajustes') },
   ]
   return (
@@ -177,6 +180,21 @@ function BarraInferior() {
   )
 }
 
+/** Campana de aprobaciones para el encabezado del celular */
+function CampanaAprobar() {
+  const { items } = usePorAprobar()
+  return (
+    <Link
+      to="/aprobaciones"
+      aria-label={`Por aprobar${items.length ? `: ${items.length}` : ''}`}
+      className="relative flex size-11 items-center justify-center rounded-full text-texto-2 hover:bg-superficie-2 md:hidden"
+    >
+      <Tray size={24} />
+      {items.length > 0 && <Insignia n={items.length} className="absolute top-0.5 right-0" />}
+    </Link>
+  )
+}
+
 export function Shell({ children }: { children: ReactNode }) {
   const { pathname } = useLocation()
   const registrar = useRegistrarGasto()
@@ -194,6 +212,7 @@ export function Shell({ children }: { children: ReactNode }) {
             </div>
             <div className="flex items-center gap-2 md:gap-4">
               {actual?.conMes && <SelectorMes className="-mr-2 md:mr-0" />}
+              {!actual?.conMes && pathname !== '/aprobaciones' && <CampanaAprobar />}
               <div className="hidden md:block">
                 <Boton icono={Plus} onClick={() => registrar()}>
                   Registrar gasto

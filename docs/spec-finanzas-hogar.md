@@ -1,4 +1,4 @@
-# Casa Sofía y Diego — Especificación (v3, 28-oct-2026)
+# Casa Sofía y Diego — Especificación (v4, 28-oct-2026)
 
 Fuente de verdad del sistema. Reconstruida a partir de la spec v1 (ago-2026), la fase 3 de presupuesto (ago-2026), el plan de rediseño v3 (19-oct-2026) y las decisiones del 28-oct-2026. Todo cambio de alcance se integra aquí antes de construir.
 
@@ -53,7 +53,9 @@ Fuente de verdad del sistema. Reconstruida a partir de la spec v1 (ago-2026), la
 | Wishlist | Compras no usuales; aprobación de ambos solo si superan el umbral | **2 · hecho** |
 | Metas | Objetivo + aportes; nace de wishlist aprobada o manual. Comparte motor con Anuales (`fondos`) | **2 · hecho** |
 | Por aprobar | Bandeja única de gastos y wishlist pendientes | **2 · hecho** |
-| Recetas → Menú semanal → Súper | Lista de súper compartida, generada desde el menú (consolida, marca origen) | 3 |
+| Recetas | Ingredientes por plato con porción estándar y extra de proteína; pasos; etiquetas | **3 · hecho** |
+| Menú semanal | Desayuno · Almuerzo (la fuerte) · Cena + Lonchera opcional, por día; para ambos o una persona | **3 · hecho** |
+| Lista de súper | Compartida en tiempo real, por sección del súper; "Generar desde el menú" suma cantidades y marca de qué receta viene | **3 · hecho** |
 | Chores + Ausencias | Rotación con rachas; una ausencia saca a la persona de la rotación y congela la racha | 4 |
 | Mantenimiento, Documentos, Inventario | Dentro de **Casa** | 5 |
 | Salud, Mascotas | Dentro de **Casa** (decidido 28-oct: sin sección Familia) | 5 |
@@ -75,7 +77,7 @@ Navegación:
 | Dispositivo | Patrón |
 |---|---|
 | iPad (≥768 px) | Barra lateral verde bosque fija. Riel con ícono + etiqueta en vertical; barra ancha en horizontal (≥1024) |
-| Celular | Barra inferior con botón central [+]. Desde el bloque 2: Inicio · Dinero · [+] · Por aprobar · Ajustes; Dinero tiene pestañas arriba (Gastos · Presupuesto · Wishlist · Metas). Al llegar Cocina y Casa se reorganiza a Inicio · Dinero · [+] · Cocina · Casa |
+| Celular | Barra inferior con botón central [+]: Inicio · Dinero · [+] · Cocina · Ajustes (Ajustes cede su lugar a Casa en el bloque 4). Por aprobar es una campana con contador en el encabezado. Dinero y Cocina tienen pestañas arriba |
 
 ## 7. Sistema visual
 
@@ -86,7 +88,7 @@ Navegación:
 - Tema: Claro / Nocturno (oscuro de 7 p. m. a 6 a. m.) / Oscuro, por dispositivo.
 - Estados obligatorios: skeleton, vacíos con acción, errores en línea.
 
-## 8. Base de datos (bloques 1 y 2, implementado)
+## 8. Base de datos (bloques 1–3, implementado)
 
 Migraciones en `supabase/migrations/`. RLS en todas las tablas: solo miembros (`es_miembro()`).
 
@@ -112,6 +114,16 @@ fondos_aportes     (id, fondo_id, ciclo, fecha, anio, mes, monto (≠0; negativo
 wishlist           (id, nombre, nota, enlace, monto_estimado, moneda, prioridad alta|media|baja,
                     propuesto_por, estado pendiente|aprobada|en_meta|comprada|rechazada, fondo_id, gasto_id)
 wishlist_aprobaciones (item_id, persona_id, decision, decidido_en)
+
+-- Bloque 3: Cocina
+perfiles.porcion   estandar | alta_proteina
+recetas            (id, nombre, descripcion, comidas[], tiempo_min, etiquetas[], pasos[], creado_por)
+receta_ingredientes (id, receta_id, orden, nombre, cantidad (por plato), cantidad_extra (porción alta en proteína),
+                    unidad, seccion, basico (no va a la lista))
+menu               (id, fecha, comida desayuno|almuerzo|cena|lonchera, receta_id | texto, para_persona (null = ambos),
+                    porciones_extra, nota)
+super_items        (id, nombre, cantidad, unidad, seccion, comprado, comprado_en, comprado_por,
+                    origen manual|menu, semana, recetas, nota, agregado_por)
 ```
 
 Reglas en la base (triggers / funciones):
@@ -139,7 +151,9 @@ Cálculos del mes (cliente, `src/lib/calculos.ts`):
 - **Aprobación**: bandeja "Por aprobar" (gastos + wishlist); en la tablet con PIN.
 - **Wishlist → Meta → Gasto**: item → si ≥ umbral, aprobación de ambos; si no, aprobado directo → "Ahorrar para esto" crea la meta con monto y fecha, o "Ya lo compramos" registra el gasto → aportes → "Comprar" paga desde la meta y la cierra.
 - **Anuales**: nombre, categoría, monto, moneda, vencimiento, recurrente. Aparece con aviso cuando se acerca su mes. "Pagar" registra el gasto desde el apartado y reinicia el ciclo si es recurrente.
-- **Cocina** (bloque 3): Recetas → Menú → "Generar lista de súper" (consolida, sin duplicados, marca origen). Preferencias de la casa: comida fuerte al mediodía; lonchera para Diego.
+- **Cocina**: Recetas → Menú → "Generar lista de súper". La generación suma por (nombre, unidad, sección), anota las recetas de origen, omite los básicos de despensa (sal, especias, spray) y reemplaza solo lo generado antes para esa semana que no se ha comprado.
+- **Porciones** (decidido 28-oct): cada receta se escribe por plato. La porción estándar es baja en grasa (pensada para Sofía); la porción **alta en proteína** suma `cantidad_extra` de proteína (pensada para Diego, para ganar músculo). Cada perfil elige su porción en Ajustes.
+- **Recetas sembradas** (decidido 28-oct): 12 recetas sin pescado ni mariscos, sin carbohidratos simples (nada de arroz blanco, pan blanco, pasta, azúcar), bajas en grasa; tampoco llevan arroz, lentejas, pollo enlatado, sardinas ni sopa de frijoles. Comida fuerte al mediodía y cenas ligeras.
 - **Chores** (bloque 4): rotación entre perfiles, racha por persona; ausencias pausan la rotación y congelan la racha.
 
 ## 10. Limitaciones conocidas del bloque 1
@@ -152,8 +166,8 @@ Cálculos del mes (cliente, `src/lib/calculos.ts`):
 ## 11. Orden de construcción
 
 1. ~~A. Design system + shell · B. Gastos y Presupuesto mensual · C. Inicio~~ (bloque 1, 28-oct-2026)
-2. ~~Presupuesto Anuales + Wishlist + Metas~~ (bloque 2, 28-oct-2026) → rediseño visual con las fotos de referencia
-3. Cocina
+2. ~~Presupuesto Anuales + Wishlist + Metas~~ (bloque 2, 28-oct-2026)
+3. ~~Cocina~~ (bloque 3, 28-oct-2026)
 4. Chores + Ausencias
 5. Mantenimiento, Documentos, Inventario, Salud, Mascotas
 

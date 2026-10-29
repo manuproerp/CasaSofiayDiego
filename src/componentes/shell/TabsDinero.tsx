@@ -1,19 +1,25 @@
 import { NavLink } from 'react-router-dom'
 import { cx } from '@/componentes/ui/base'
 
-const TABS = [
+const DINERO = [
   { a: '/gastos', texto: 'Gastos' },
   { a: '/presupuesto', texto: 'Presupuesto' },
   { a: '/wishlist', texto: 'Wishlist' },
   { a: '/metas', texto: 'Metas' },
 ]
 
-/** Pestañas de Dinero en el celular (en iPad la barra lateral ya las muestra) */
-export function TabsDinero() {
+const COCINA = [
+  { a: '/menu', texto: 'Menú' },
+  { a: '/recetas', texto: 'Recetas' },
+  { a: '/super', texto: 'Súper' },
+]
+
+/** Pestañas de sección en el celular (en iPad la barra lateral ya las muestra) */
+function Tabs({ tabs, etiqueta }: { tabs: { a: string; texto: string }[]; etiqueta: string }) {
   return (
-    <nav aria-label="Dinero" className="-mx-4 -mt-1 overflow-x-auto px-4 md:hidden">
+    <nav aria-label={etiqueta} className="-mx-4 -mt-1 overflow-x-auto px-4 md:hidden">
       <div className="flex w-max gap-1.5">
-        {TABS.map((t) => (
+        {tabs.map((t) => (
           <NavLink
             key={t.a}
             to={t.a}
@@ -30,4 +36,12 @@ export function TabsDinero() {
       </div>
     </nav>
   )
+}
+
+export function TabsDinero() {
+  return <Tabs tabs={DINERO} etiqueta="Dinero" />
+}
+
+export function TabsCocina() {
+  return <Tabs tabs={COCINA} etiqueta="Cocina" />
 }

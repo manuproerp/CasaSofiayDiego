@@ -7,6 +7,8 @@ export type TipoFondo = 'anual' | 'meta'
 export type EstadoFondo = 'activo' | 'pagado' | 'cancelado'
 export type EstadoWishlist = 'pendiente' | 'aprobada' | 'en_meta' | 'comprada' | 'rechazada'
 export type Prioridad = 'alta' | 'media' | 'baja'
+export type Porcion = 'estandar' | 'alta_proteina'
+export type Comida = 'desayuno' | 'almuerzo' | 'cena' | 'lonchera'
 
 export interface Perfil {
   id: string
@@ -15,6 +17,7 @@ export interface Perfil {
   rol: Rol
   color: string
   mesada: number | null
+  porcion: Porcion
   creado_en: string
 }
 
@@ -136,4 +139,60 @@ export interface AprobacionWishlist {
   persona_id: string
   decision: 'aprobado' | 'rechazado'
   decidido_en: string
+}
+
+export interface Ingrediente {
+  id: string
+  receta_id: string
+  orden: number
+  nombre: string
+  cantidad: number | null
+  cantidad_extra: number
+  unidad: string | null
+  seccion: string
+  basico: boolean
+}
+
+export interface Receta {
+  id: string
+  nombre: string
+  descripcion: string | null
+  comidas: Comida[]
+  tiempo_min: number | null
+  etiquetas: string[]
+  pasos: string[]
+  creado_por: string | null
+  creado_en: string
+  actualizado_en: string
+  receta_ingredientes: Ingrediente[]
+}
+
+export interface EntradaMenu {
+  id: string
+  fecha: string
+  comida: Comida
+  receta_id: string | null
+  texto: string | null
+  para_persona: string | null
+  porciones_extra: number
+  nota: string | null
+  creado_por: string | null
+  creado_en: string
+}
+
+export interface ItemSuper {
+  id: string
+  nombre: string
+  cantidad: number | null
+  unidad: string | null
+  seccion: string
+  comprado: boolean
+  comprado_en: string | null
+  comprado_por: string | null
+  origen: 'manual' | 'menu'
+  semana: string | null
+  recetas: string | null
+  nota: string | null
+  agregado_por: string | null
+  creado_en: string
 }

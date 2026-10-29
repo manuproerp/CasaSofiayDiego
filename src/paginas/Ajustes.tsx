@@ -25,6 +25,7 @@ import {
 import { guardarPrefs, usePrefsDispositivo, type Tema } from '@/lib/dispositivo'
 import { dinero, fechaCorta, parsearMonto } from '@/lib/formato'
 import { mensajeError, supabase } from '@/lib/supabase'
+import type { Porcion } from '@/lib/tipos'
 
 function Seccion({ id, titulo, descripcion, children }: { id?: string; titulo: string; descripcion?: string; children: ReactNode }) {
   return (
@@ -205,6 +206,44 @@ function Mesadas() {
           {personas.length < 2 && (
             <p className="text-[13px] text-texto-3">La otra persona aparecerá aquí cuando cree su cuenta.</p>
           )}
+        </div>
+      )}
+    </Seccion>
+  )
+}
+
+function Porciones() {
+  const avisar = useAvisar()
+  const { personas, isLoading } = usePersonas()
+  const guardar = useGuardarPerfil()
+  return (
+    <Seccion titulo="Porciones en recetas" descripcion="Estándar es baja en grasa. Alta en proteína suma la proteína extra de cada receta al plato y a la lista del súper.">
+      {isLoading ? (
+        <Esqueleto className="h-24" />
+      ) : (
+        <div className="flex flex-col gap-4">
+          {personas.map((p, i) => (
+            <div key={p.id} className="flex flex-wrap items-center gap-3">
+              <Avatar persona={p} indice={i} tamano={40} className="!ring-0" />
+              <span className="w-20 font-medium">{p.nombre}</span>
+              <Segmentado<Porcion>
+                className="flex-1"
+                valor={p.porcion}
+                onChange={async (v) => {
+                  try {
+                    await guardar.mutateAsync({ id: p.id, porcion: v })
+                    avisar(`Porción de ${p.nombre} actualizada`)
+                  } catch (e) {
+                    avisar(mensajeError(e), 'error')
+                  }
+                }}
+                opciones={[
+                  { valor: 'estandar', texto: 'Estándar' },
+                  { valor: 'alta_proteina', texto: 'Alta en proteína' },
+                ]}
+              />
+            </div>
+          ))}
         </div>
       )}
     </Seccion>
@@ -408,6 +447,7 @@ export function Ajustes() {
       </div>
       <div className="flex flex-col gap-6">
         <Mesadas />
+        <Porciones />
         <Umbral />
         <TipoCambio />
         <Dispositivo />

@@ -9,11 +9,14 @@ import type {
   Categoria,
   Configuracion,
   CorreoPermitido,
+  EntradaMenu,
   Fondo,
   Gasto,
   ItemPresupuesto,
+  ItemSuper,
   ItemWishlist,
   Moneda,
+  Receta,
   Perfil,
   TipoCambio,
 } from '@/lib/tipos'
@@ -34,6 +37,9 @@ export const CLAVES = {
   aportes: ['aportes'],
   wishlist: ['wishlist'],
   wishlistAprobaciones: ['wishlist_aprobaciones'],
+  recetas: ['recetas'],
+  menu: ['menu'],
+  super: ['super'],
 } as const
 
 async function datos<T>(p: PromiseLike<{ data: T | null; error: unknown }>): Promise<T> {
@@ -338,7 +344,7 @@ export function useGuardarTC() {
 export function useGuardarPerfil() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async ({ id, ...p }: Pick<Perfil, 'id'> & Partial<Pick<Perfil, 'nombre' | 'mesada' | 'color'>>) =>
+    mutationFn: async ({ id, ...p }: Pick<Perfil, 'id'> & Partial<Pick<Perfil, 'nombre' | 'mesada' | 'color' | 'porcion'>>) =>
       datos(supabase.from('perfiles').update(p).eq('id', id)),
     onSuccess: () => qc.invalidateQueries({ queryKey: CLAVES.perfiles }),
   })
@@ -539,5 +545,148 @@ export function useCrearMetaDesdeWishlist() {
       qc.invalidateQueries({ queryKey: CLAVES.wishlist })
       qc.invalidateQueries({ queryKey: CLAVES.fondos })
     },
+  })
+}
+
+// ───────────── Cocina ─────────────
+
+const numN = (v: unknown) => (v == null ? null : Number(v))
+
+export function useRecetas() {
+  return useQuery({
+    queryKey: CLAVES.recetas,
+    queryFn: async () => {
+      const filas = await datos<Receta[]>(
+        supabase.from('recetas').select('*, receta_ingredientes(*)').order('nombre'),
+      )
+      return filas.map((r) => ({
+        ...r,
+        receta_ingredientes: (r.receta_ingredientes ?? [])
+          .map((i) => ({ ...i, cantidad: numN(i.cantidad), cantidad_extra: Number(i.cantidad_extra ?? 0) }))
+          .sort((a, b) => a.orden - b.orden),
+      }))
+    },
+  })
+}
+
+export type IngredienteNuevo = Omit<import('@/lib/tipos').Ingrediente, 'id' | 'receta_id'>
+export type RecetaNueva = Pick<Receta, 'nombre' | 'descripcion' | 'comidas' | 'tiempo_min' | 'etiquetas' | 'pasos'>
+
+export function useGuardarReceta() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ id, ingredientes, ...r }: RecetaNueva & { id?: string; ingredientes: IngredienteNuevo[] }) => {
+      let recetaId = id
+      if (id) {
+        await datos(supabase.from('recetas').update({ ...r, actualizado_en: new Date().toISOString() }).eq('id', id))
+        await datos(supabase.from('receta_ingredientes').delete().eq('receta_id', id))
+      } else {
+        const nueva = await datos<{ id: string }>(supabase.from('recetas').insert(r).select('id').single())
+        recetaId = nueva.id
+      }
+      if (ingredientes.length) {
+        await datos(
+          supabase.from('receta_ingredientes').insert(ingredientes.map((i, n) => ({ ...i, orden: n + 1, receta_id: recetaId }))),
+        )
+      }
+      return recetaId as string
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: CLAVES.recetas }),
+  })
+}
+
+export function useBorrarReceta() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (id: string) => datos(supabase.from('recetas').delete().eq('id', id)),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: CLAVES.recetas })
+      qc.invalidateQueries({ queryKey: CLAVES.menu })
+    },
+  })
+}
+
+export function useMenuRango(desde: string, hasta: string) {
+  return useQuery({
+    queryKey: [...CLAVES.menu, desde, hasta],
+    queryFn: () =>
+      datos<EntradaMenu[]>(
+        supabase.from('menu').select('*').gte('fecha', desde).lte('fecha', hasta).order('fecha').order('creado_en'),
+      ),
+  })
+}
+
+export type EntradaNueva = Pick<EntradaMenu, 'fecha' | 'comida' | 'receta_id' | 'texto' | 'para_persona' | 'porciones_extra' | 'nota'>
+
+export function useGuardarEntradaMenu() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ id, ...e }: Partial<EntradaNueva> & { id?: string }) =>
+      datos(id ? supabase.from('menu').update(e).eq('id', id) : supabase.from('menu').insert(e as EntradaNueva)),
+    onSuccess: () => qc.invalidateQueries({ queryKey: CLAVES.menu }),
+  })
+}
+
+export function useInsertarMenu() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (lista: EntradaNueva[]) => datos(supabase.from('menu').insert(lista)),
+    onSuccess: () => qc.invalidateQueries({ queryKey: CLAVES.menu }),
+  })
+}
+
+export function useBorrarEntradaMenu() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (id: string) => datos(supabase.from('menu').delete().eq('id', id)),
+    onSuccess: () => qc.invalidateQueries({ queryKey: CLAVES.menu }),
+  })
+}
+
+export function useSuper() {
+  return useQuery({
+    queryKey: CLAVES.super,
+    queryFn: async () => {
+      const filas = await datos<ItemSuper[]>(supabase.from('super_items').select('*').order('creado_en'))
+      return filas.map((i) => ({ ...i, cantidad: numN(i.cantidad) }))
+    },
+  })
+}
+
+export type ItemSuperNuevo = Pick<ItemSuper, 'nombre' | 'cantidad' | 'unidad' | 'seccion' | 'nota'>
+
+export function useGuardarItemSuper() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ id, ...i }: Partial<ItemSuperNuevo> & { id?: string; comprado?: boolean }) =>
+      datos(id ? supabase.from('super_items').update(i).eq('id', id) : supabase.from('super_items').insert(i as ItemSuperNuevo)),
+    onMutate: async (v) => {
+      // Marcar comprado se siente instantáneo
+      if (!v.id || v.comprado === undefined) return
+      await qc.cancelQueries({ queryKey: CLAVES.super })
+      const previo = qc.getQueryData<ItemSuper[]>(CLAVES.super)
+      qc.setQueryData<ItemSuper[]>(CLAVES.super, (l) => l?.map((x) => (x.id === v.id ? { ...x, comprado: !!v.comprado } : x)))
+      return { previo }
+    },
+    onError: (_e, _v, ctx) => {
+      if (ctx?.previo) qc.setQueryData(CLAVES.super, ctx.previo)
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: CLAVES.super }),
+  })
+}
+
+export function useBorrarItemsSuper() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (ids: string[]) => datos(supabase.from('super_items').delete().in('id', ids)),
+    onSuccess: () => qc.invalidateQueries({ queryKey: CLAVES.super }),
+  })
+}
+
+export function useGenerarSuper() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (lunes: string) => datos<number>(supabase.rpc('generar_super', { p_lunes: lunes })),
+    onSuccess: () => qc.invalidateQueries({ queryKey: CLAVES.super }),
   })
 }
