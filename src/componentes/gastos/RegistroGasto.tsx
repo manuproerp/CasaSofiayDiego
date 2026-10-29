@@ -212,7 +212,7 @@ function FlujoGasto({ inicial, onCerrar }: { inicial: InicialGasto; onCerrar: ()
                     value={tcTxt}
                     onChange={(e) => setTcTxt(e.target.value)}
                     placeholder="24.70"
-                    className="num h-9 w-24 rounded-[10px] border border-borde-fuerte bg-superficie px-2.5 text-texto outline-none focus:border-primario"
+                    className="num h-10 w-28 rounded-[10px] text-base border border-borde-fuerte bg-superficie px-2.5 text-texto outline-none focus:border-primario"
                   />
                 </label>
                 {monto && tcValor ? (

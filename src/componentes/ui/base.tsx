@@ -117,7 +117,7 @@ export function Campo({ etiqueta, ayuda, error, children, className }: PropsCamp
 }
 
 const claseControl =
-  'h-12 w-full rounded-control border border-borde-fuerte bg-superficie px-4 text-[15px] text-texto placeholder:text-texto-3 outline-none transition focus:border-primario focus:ring-2 focus:ring-primario/15'
+  'h-12 w-full rounded-control border border-borde-fuerte bg-superficie px-4 text-base text-texto placeholder:text-texto-3 outline-none transition focus:border-primario focus:ring-2 focus:ring-primario/15'
 
 export const Entrada = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputElement>>(function Entrada(
   { className, ...rest },
