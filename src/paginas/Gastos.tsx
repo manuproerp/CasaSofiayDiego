@@ -4,6 +4,7 @@ import { ListaAprobaciones } from '@/componentes/gastos/Aprobaciones'
 import { EditarGasto } from '@/componentes/gastos/EditarGasto'
 import { FilaGasto } from '@/componentes/gastos/FilaGasto'
 import { useIndicePersona, useRegistrarGasto } from '@/componentes/gastos/RegistroGasto'
+import { TabsDinero } from '@/componentes/shell/TabsDinero'
 import { Boton, cx, Esqueleto, ErrorEnLinea, Segmentado, Selector, Tarjeta, Vacio } from '@/componentes/ui/base'
 import { Avatar, Monto } from '@/componentes/ui/datos'
 import { useGastosMes, useMapaCategorias, usePersonas } from '@/datos/consultas'
@@ -58,6 +59,8 @@ export function Gastos() {
   const hayFiltros = filtro !== 'todos' || !!persona || !!categoria
 
   return (
+    <div className="flex flex-col gap-5">
+    <TabsDinero />
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start">
       <div className="flex min-w-0 flex-col gap-5">
         {/* Totales del mes */}
@@ -216,11 +219,12 @@ export function Gastos() {
         </Tarjeta>
         <Tarjeta className="flex flex-col gap-4 p-5 md:p-6">
           <h2 className="font-semibold tracking-tight">Por aprobar</h2>
-          <ListaAprobaciones compacta />
+          <ListaAprobaciones compacta solo="gasto" />
         </Tarjeta>
       </aside>
 
       {editando && <EditarGasto gasto={editando} onCerrar={() => setEditando(null)} />}
+    </div>
     </div>
   )
 }

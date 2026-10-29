@@ -1,16 +1,21 @@
-import { CalendarCheck, ChartPieSlice, CheckCircle, GearSix, ListBullets, Plus, Repeat } from '@phosphor-icons/react'
+import { CalendarCheck, ChartPieSlice, GearSix, HandCoins, ListBullets, Plus } from '@phosphor-icons/react'
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { useRegistrarGasto } from '@/componentes/gastos/RegistroGasto'
+import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useAccionesFondo } from '@/componentes/apartados/Acciones'
+import { ApartarMes } from '@/componentes/apartados/ApartarMes'
+import { FilaFondo } from '@/componentes/apartados/FilaFondo'
+import { FormFondo } from '@/componentes/apartados/FormFondo'
 import { FormPartida } from '@/componentes/presupuesto/FormPartida'
-import { Aviso, Boton, cx, Esqueleto, ErrorEnLinea, Etiqueta, Tarjeta, TituloSeccion, Vacio } from '@/componentes/ui/base'
+import { TabsDinero } from '@/componentes/shell/TabsDinero'
+import { Aviso, Boton, cx, Esqueleto, ErrorEnLinea, Segmentado, Tarjeta, TituloSeccion, Vacio } from '@/componentes/ui/base'
 import { Barra, Monto } from '@/componentes/ui/datos'
 import { Hoja } from '@/componentes/ui/hoja'
 import { IconoCategoria } from '@/componentes/ui/iconos'
+import { useTCActual } from '@/datos/consultas'
 import { useMes } from '@/datos/mes'
-import { useResumenMes } from '@/datos/resumen'
-import { semaforo, type EventualMes, type FilaCategoria } from '@/lib/calculos'
-import { dinero, fechaCorta, nombreMes } from '@/lib/formato'
+import { useApartados, useResumenMes } from '@/datos/resumen'
+import { semaforo, type FilaCategoria } from '@/lib/calculos'
+import { aLempiras, dinero, nombreMes } from '@/lib/formato'
 import type { ItemPresupuesto, TipoPresupuesto } from '@/lib/tipos'
 
 const TEXTO_SEMAFORO = {
@@ -22,7 +27,7 @@ const TEXTO_SEMAFORO = {
 
 function Fila({ f }: { f: FilaCategoria }) {
   const disponible = f.presupuesto - f.real
-  const tipos = [f.fijo > 0 && 'Fijo', f.variable > 0 && 'Variable', f.eventual > 0 && 'Eventual'].filter(Boolean) as string[]
+  const tipos = [f.fijo > 0 && 'Fijo', f.variable > 0 && 'Variable'].filter(Boolean) as string[]
   return (
     <li className="flex flex-col gap-2.5 py-4 first:pt-0 last:pb-0">
       <div className="flex items-center gap-3">
@@ -55,38 +60,7 @@ function Fila({ f }: { f: FilaCategoria }) {
   )
 }
 
-function Eventual({ e, onPagar }: { e: EventualMes; onPagar: () => void }) {
-  return (
-    <li className="flex items-center gap-3 py-3.5 first:pt-0 last:pb-0">
-      <span
-        className={cx(
-          'flex size-10 shrink-0 items-center justify-center rounded-[12px]',
-          e.pago ? 'bg-primario-suave text-primario' : 'bg-ambar-suave text-ambar',
-        )}
-      >
-        {e.pago ? <CheckCircle size={22} weight="fill" /> : <CalendarCheck size={20} />}
-      </span>
-      <div className="flex min-w-0 flex-1 flex-col">
-        <span className="truncate font-medium tracking-tight">{e.item.descripcion}</span>
-        <span className="flex items-center gap-1.5 truncate text-[12px] text-texto-3">
-          {e.categoria?.nombre}
-          {e.item.recurrente && <Repeat size={12} aria-label="Cada año" />}
-          {e.pago && ` · pagado ${fechaCorta(e.pago.fecha)}`}
-        </span>
-      </div>
-      <div className="flex flex-col items-end gap-1">
-        <Monto valor={e.item.monto} moneda={e.item.moneda} className="font-semibold" />
-        {!e.pago && (
-          <button onClick={onPagar} className="h-8 text-[13px] font-semibold text-primario hover:underline">
-            Registrar pago
-          </button>
-        )}
-      </div>
-    </li>
-  )
-}
-
-/** Lista de todas las partidas para administrarlas */
+/** Lista de partidas fijas y variables */
 function Partidas({
   items,
   categorias,
@@ -103,15 +77,12 @@ function Partidas({
   const grupos: { tipo: TipoPresupuesto; titulo: string }[] = [
     { tipo: 'fijo', titulo: 'Fijos · cada mes' },
     { tipo: 'variable', titulo: 'Variables · tope mensual' },
-    { tipo: 'eventual', titulo: 'Eventuales · mes específico' },
   ]
   return (
-    <Hoja abierta onCerrar={onCerrar} titulo="Partidas del presupuesto" subtitulo="Aplican a todos los meses salvo los eventuales." ancho="lg">
+    <Hoja abierta onCerrar={onCerrar} titulo="Partidas del presupuesto" subtitulo="Aplican a todos los meses." ancho="lg">
       <div className="flex flex-col gap-7">
         {grupos.map((g) => {
-          const lista = items
-            .filter((i) => i.tipo === g.tipo)
-            .sort((a, b) => (a.mes ?? 0) - (b.mes ?? 0) || b.monto - a.monto)
+          const lista = items.filter((i) => i.tipo === g.tipo).sort((a, b) => b.monto - a.monto)
           return (
             <section key={g.tipo} className="flex flex-col gap-2">
               <TituloSeccion
@@ -135,10 +106,7 @@ function Partidas({
                           <IconoCategoria nombre={c?.icono} size={20} className="text-v500" />
                           <span className="flex min-w-0 flex-1 flex-col">
                             <span className="truncate font-medium">{p.descripcion || c?.nombre}</span>
-                            <span className="truncate text-[12px] text-texto-3">
-                              {p.descripcion ? c?.nombre : ''}
-                              {p.tipo === 'eventual' && `${p.descripcion ? ' · ' : ''}${nombreMes(p.mes ?? 1)}${p.recurrente ? ', cada año' : ` ${p.anio}`}`}
-                            </span>
+                            {p.descripcion && <span className="truncate text-[12px] text-texto-3">{c?.nombre}</span>}
                           </span>
                           <Monto valor={p.monto} moneda={p.moneda} className="font-semibold" />
                         </button>
@@ -155,18 +123,87 @@ function Partidas({
   )
 }
 
-export function Presupuesto() {
+/** Tarjeta de apartados del mes (anuales + metas) */
+function ApartadosDelMes() {
+  const { anio, mes } = useMes()
+  const [, setParams] = useSearchParams()
+  const { resumen, cargando } = useApartados(anio, mes)
+  const [apartar, setApartar] = useState(false)
+
+  if (cargando || !resumen) return <Esqueleto className="h-56 rounded-tarjeta" />
+
+  const proximos = resumen.fondos
+    .filter((e) => e.fondo.tipo === 'anual' && e.dias != null && e.dias <= 90)
+    .sort((a, b) => (a.dias ?? 0) - (b.dias ?? 0))
+    .slice(0, 3)
+  const pendiente = Math.max(0, resumen.sugeridoMes - resumen.aportadoMes)
+
+  return (
+    <Tarjeta className="flex flex-col gap-4 p-6">
+      <div className="flex items-center justify-between">
+        <h2 className="font-semibold tracking-tight">Apartados de {nombreMes(mes, false)}</h2>
+        <button onClick={() => setParams({ vista: 'anuales' })} className="h-9 text-[13px] font-medium text-texto-2 hover:text-primario">
+          Ver anuales
+        </button>
+      </div>
+      {resumen.fondos.length === 0 ? (
+        <Vacio
+          compacto
+          icono={CalendarCheck}
+          titulo="Sin apartados todavía"
+          texto="Agrega los gastos anuales (matrículas, suscripciones) y la app sugiere cuánto apartar cada mes."
+          accion={
+            <Boton tamano="sm" variante="suave" icono={Plus} onClick={() => setParams({ vista: 'anuales' })}>
+              Agregar anual
+            </Boton>
+          }
+        />
+      ) : (
+        <>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="flex flex-col">
+              <span className="text-[13px] text-texto-3">Sugerido</span>
+              <Monto valor={resumen.sugeridoMes} decimales={false} className="text-xl font-semibold" />
+            </div>
+            <div className="flex flex-col">
+              <span className="text-[13px] text-texto-3">Apartado</span>
+              <Monto valor={resumen.aportadoMes} decimales={false} className={cx('text-xl font-semibold', pendiente <= 0 && 'text-primario')} />
+            </div>
+          </div>
+          <Barra real={resumen.aportadoMes} total={resumen.sugeridoMes} />
+          <Boton icono={HandCoins} variante={pendiente > 0 ? 'primario' : 'secundario'} onClick={() => setApartar(true)}>
+            {pendiente > 0 ? `Apartar ${dinero(pendiente, 'HNL', { corto: true })}` : 'Apartar más'}
+          </Boton>
+          {proximos.length > 0 && (
+            <ul className="flex flex-col divide-y divide-borde border-t border-borde">
+              {proximos.map((e) => (
+                <li key={e.fondo.id} className="flex items-center gap-3 py-3 text-sm">
+                  <CalendarCheck size={18} className={e.dias != null && e.dias <= 30 ? 'text-ambar' : 'text-v500'} />
+                  <span className="flex-1 truncate font-medium">{e.fondo.nombre}</span>
+                  <span className="num text-texto-2">
+                    {Math.round(e.pct)}%
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+          {resumen.faltaTC && <Aviso tono="ambar">Hay apartados en dólares sin tipo de cambio registrado.</Aviso>}
+        </>
+      )}
+      {apartar && <ApartarMes fondos={resumen.fondos} anio={anio} mes={mes} onCerrar={() => setApartar(false)} />}
+    </Tarjeta>
+  )
+}
+
+function Mensual() {
   const { anio, mes } = useMes()
   const navegar = useNavigate()
-  const registrar = useRegistrarGasto()
   const { resumen, items, categorias, cargando, error, reintentar } = useResumenMes(anio, mes)
   const [verPartidas, setVerPartidas] = useState(false)
   const [form, setForm] = useState<{ partida?: ItemPresupuesto; tipo?: TipoPresupuesto } | null>(null)
-
   const mapaCat = new Map(categorias.map((c) => [c.id, c]))
 
   if (error) return <ErrorEnLinea error={error} reintentar={reintentar} />
-
   if (cargando || !resumen) {
     return (
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
@@ -180,153 +217,106 @@ export function Presupuesto() {
   }
 
   const sinCategorias = categorias.length === 0
-  const sinPartidas = items.length === 0
   const disponible = resumen.presupuestoTotal - resumen.realTotal
   const estado = semaforo(resumen.realTotal, resumen.presupuestoTotal)
 
-  if (sinPartidas) {
-    return (
-      <Tarjeta className="px-6 md:px-10">
-        <Vacio
-          icono={ChartPieSlice}
-          titulo="Arma el presupuesto de la casa"
-          texto={
-            sinCategorias
-              ? 'Primero crea las categorías en Ajustes (súper, luz, renta…). Después agregas cuánto le toca a cada una.'
-              : 'Agrega lo fijo (renta, internet), los topes variables (súper, gasolina) y los eventuales con su mes (matrícula, impuestos).'
-          }
-          accion={
-            sinCategorias ? (
-              <Boton icono={GearSix} onClick={() => navegar('/ajustes#categorias')}>
-                Crear categorías
-              </Boton>
-            ) : (
-              <Boton icono={Plus} onClick={() => setForm({ tipo: 'fijo' })}>
-                Agregar partida
-              </Boton>
-            )
-          }
-        />
-        {form && <FormPartida partida={form.partida} tipoInicial={form.tipo} onCerrar={() => setForm(null)} />}
-      </Tarjeta>
-    )
-  }
+  const formulario = form && <FormPartida partida={form.partida} tipoInicial={form.tipo} onCerrar={() => setForm(null)} />
 
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start">
       <div className="flex min-w-0 flex-col gap-6">
-        {/* Resumen del mes */}
-        <Tarjeta className="flex flex-col gap-5 p-6 md:p-8">
-          <div className="grid grid-cols-2 gap-x-6 gap-y-4 md:grid-cols-[1.4fr_1fr_1fr]">
-            <div className="col-span-2 flex flex-col gap-1 md:col-span-1">
-              <span className="text-[13px] text-texto-3">Gastado de {nombreMes(mes, false)}</span>
-              <Monto valor={resumen.realTotal} className="text-4xl font-semibold tracking-tighter" />
-            </div>
-            <div className="flex flex-col gap-1">
-              <span className="text-[13px] text-texto-3">Presupuesto</span>
-              <Monto valor={resumen.presupuestoTotal} className="text-xl font-semibold" decimales={false} />
-            </div>
-            <div className="flex flex-col gap-1">
-              <span className="text-[13px] text-texto-3">{disponible >= 0 ? 'Disponible' : 'Excedido'}</span>
-              <Monto
-                valor={Math.abs(disponible)}
-                decimales={false}
-                className={cx('text-xl font-semibold', disponible < 0 ? 'text-rojo' : estado === 'cerca' ? 'text-ambar' : 'text-primario')}
-              />
-            </div>
-          </div>
-          <Barra real={resumen.realTotal} total={resumen.presupuestoTotal} semaforo={estado} className="h-2.5" />
-          {resumen.pendienteTotal > 0 && (
-            <p className="text-[13px] text-texto-2">
-              Hay {dinero(resumen.pendienteTotal)} esperando aprobación que todavía no cuentan.
-            </p>
-          )}
-          {resumen.faltaTC && (
-            <Aviso tono="ambar">Hay partidas en dólares y no hay tipo de cambio registrado. Agrégalo en Ajustes.</Aviso>
-          )}
-        </Tarjeta>
-
-        {/* Por categoría */}
-        <Tarjeta className="flex flex-col gap-5 p-6 md:p-8">
-          <TituloSeccion
-            accion={
-              <Boton tamano="sm" variante="secundario" icono={ListBullets} onClick={() => setVerPartidas(true)}>
-                Partidas
-              </Boton>
-            }
-          >
-            Por categoría
-          </TituloSeccion>
-          {resumen.filas.length === 0 ? (
-            <p className="text-sm text-texto-2">No hay partidas que apliquen a {nombreMes(mes, false)}.</p>
-          ) : (
-            <ul className="flex flex-col divide-y divide-borde">
-              {resumen.filas.map((f) => (
-                <Fila key={f.categoria.id} f={f} />
-              ))}
-            </ul>
-          )}
-          {resumen.sinPresupuesto.length > 0 && (
-            <div className="flex flex-col gap-3 border-t border-dashed border-borde-fuerte pt-5">
-              <span className="text-[13px] font-medium text-texto-2">Gastado sin presupuesto</span>
-              <ul className="flex flex-col gap-2">
-                {resumen.sinPresupuesto.map((f) => (
-                  <li key={f.categoria.id} className="flex items-center gap-3 text-sm">
-                    <IconoCategoria nombre={f.categoria.icono} size={18} className="text-texto-3" />
-                    <span className="flex-1">{f.categoria.nombre}</span>
-                    <Monto valor={f.real} className="font-medium" />
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-        </Tarjeta>
-      </div>
-
-      {/* Eventuales del mes */}
-      <aside className="flex flex-col gap-6 lg:sticky lg:top-[100px]">
-        <Tarjeta className="flex flex-col gap-4 p-6">
-          <div className="flex items-center justify-between">
-            <h2 className="font-semibold tracking-tight">Eventuales de {nombreMes(mes, false)}</h2>
-            {resumen.eventuales.length > 0 && (
-              <Etiqueta tono={resumen.eventuales.every((e) => e.pago) ? 'verde' : 'ambar'}>
-                {resumen.eventuales.filter((e) => e.pago).length}/{resumen.eventuales.length} pagados
-              </Etiqueta>
-            )}
-          </div>
-          {resumen.eventuales.length === 0 ? (
+        {items.length === 0 ? (
+          <Tarjeta className="px-6 md:px-10">
             <Vacio
-              compacto
-              icono={CalendarCheck}
-              titulo="Nada especial este mes"
-              texto="Los gastos de un mes específico (matrícula, impuestos) aparecen aquí."
+              icono={ChartPieSlice}
+              titulo="Arma el presupuesto de la casa"
+              texto={
+                sinCategorias
+                  ? 'Primero crea las categorías en Ajustes (súper, luz, renta…). Después agregas cuánto le toca a cada una.'
+                  : 'Agrega lo fijo (renta, internet) y los topes variables (súper, gasolina). Lo anual va en la pestaña Anuales.'
+              }
               accion={
-                <Boton tamano="sm" variante="suave" icono={Plus} onClick={() => setForm({ tipo: 'eventual' })}>
-                  Agregar eventual
-                </Boton>
+                sinCategorias ? (
+                  <Boton icono={GearSix} onClick={() => navegar('/ajustes#categorias')}>
+                    Crear categorías
+                  </Boton>
+                ) : (
+                  <Boton icono={Plus} onClick={() => setForm({ tipo: 'fijo' })}>
+                    Agregar partida
+                  </Boton>
+                )
               }
             />
-          ) : (
-            <ul className="flex flex-col divide-y divide-borde">
-              {resumen.eventuales.map((e) => (
-                <Eventual
-                  key={e.item.id}
-                  e={e}
-                  onPagar={() =>
-                    registrar({
-                      monto: e.item.monto,
-                      moneda: e.item.moneda,
-                      categoria_id: e.item.categoria_id,
-                      descripcion: e.item.descripcion,
-                      presupuesto_id: e.item.id,
-                      titulo: `Pagar ${e.item.descripcion}`,
-                    })
-                  }
-                />
-              ))}
-            </ul>
-          )}
-        </Tarjeta>
+          </Tarjeta>
+        ) : (
+          <>
+            <Tarjeta className="flex flex-col gap-5 p-6 md:p-8">
+              <div className="grid grid-cols-2 gap-x-6 gap-y-4 md:grid-cols-[1.4fr_1fr_1fr]">
+                <div className="col-span-2 flex flex-col gap-1 md:col-span-1">
+                  <span className="text-[13px] text-texto-3">Gastado de {nombreMes(mes, false)}</span>
+                  <Monto valor={resumen.realTotal} className="text-4xl font-semibold tracking-tighter" />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <span className="text-[13px] text-texto-3">Presupuesto</span>
+                  <Monto valor={resumen.presupuestoTotal} className="text-xl font-semibold" decimales={false} />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <span className="text-[13px] text-texto-3">{disponible >= 0 ? 'Disponible' : 'Excedido'}</span>
+                  <Monto
+                    valor={Math.abs(disponible)}
+                    decimales={false}
+                    className={cx('text-xl font-semibold', disponible < 0 ? 'text-rojo' : estado === 'cerca' ? 'text-ambar' : 'text-primario')}
+                  />
+                </div>
+              </div>
+              <Barra real={resumen.realTotal} total={resumen.presupuestoTotal} semaforo={estado} className="h-2.5" />
+              {(resumen.pendienteTotal > 0 || resumen.pagadoDesdeApartados > 0) && (
+                <div className="flex flex-col gap-1 text-[13px] text-texto-2">
+                  {resumen.pendienteTotal > 0 && <p>{dinero(resumen.pendienteTotal)} esperan aprobación y todavía no cuentan.</p>}
+                  {resumen.pagadoDesdeApartados > 0 && (
+                    <p>{dinero(resumen.pagadoDesdeApartados)} se pagaron desde apartados y no cuentan aquí.</p>
+                  )}
+                </div>
+              )}
+              {resumen.faltaTC && <Aviso tono="ambar">Hay partidas en dólares sin tipo de cambio registrado. Agrégalo en Ajustes.</Aviso>}
+            </Tarjeta>
+
+            <Tarjeta className="flex flex-col gap-5 p-6 md:p-8">
+              <TituloSeccion
+                accion={
+                  <Boton tamano="sm" variante="secundario" icono={ListBullets} onClick={() => setVerPartidas(true)}>
+                    Partidas
+                  </Boton>
+                }
+              >
+                Por categoría
+              </TituloSeccion>
+              <ul className="flex flex-col divide-y divide-borde">
+                {resumen.filas.map((f) => (
+                  <Fila key={f.categoria.id} f={f} />
+                ))}
+              </ul>
+              {resumen.sinPresupuesto.length > 0 && (
+                <div className="flex flex-col gap-3 border-t border-dashed border-borde-fuerte pt-5">
+                  <span className="text-[13px] font-medium text-texto-2">Gastado sin presupuesto</span>
+                  <ul className="flex flex-col gap-2">
+                    {resumen.sinPresupuesto.map((f) => (
+                      <li key={f.categoria.id} className="flex items-center gap-3 text-sm">
+                        <IconoCategoria nombre={f.categoria.icono} size={18} className="text-texto-3" />
+                        <span className="flex-1">{f.categoria.nombre}</span>
+                        <Monto valor={f.real} className="font-medium" />
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </Tarjeta>
+          </>
+        )}
+      </div>
+
+      <aside className="flex flex-col gap-6 lg:sticky lg:top-[100px]">
+        <ApartadosDelMes />
       </aside>
 
       {verPartidas && (
@@ -338,7 +328,109 @@ export function Presupuesto() {
           onNueva={(t) => setForm({ tipo: t })}
         />
       )}
-      {form && <FormPartida partida={form.partida} tipoInicial={form.tipo} onCerrar={() => setForm(null)} />}
+      {formulario}
+    </div>
+  )
+}
+
+function Anuales() {
+  const { anio, mes } = useMes()
+  const { resumen, todos, cargando, error, reintentar } = useApartados(anio, mes)
+  const { tc } = useTCActual()
+  const acciones = useAccionesFondo()
+  const [nuevo, setNuevo] = useState(false)
+  const [apartar, setApartar] = useState(false)
+
+  if (error) return <ErrorEnLinea error={error} reintentar={reintentar} />
+  if (cargando || !resumen) return <Esqueleto className="h-96 rounded-tarjeta" />
+
+  const anuales = resumen.fondos.filter((e) => e.fondo.tipo === 'anual').sort((a, b) => (a.dias ?? 0) - (b.dias ?? 0))
+  const sugeridoAnuales = anuales.reduce((s, e) => s + aLempiras(e.cuotaSugerida ?? 0, e.fondo.moneda, tc?.valor), 0)
+  const pagados = todos.filter((f) => f.tipo === 'anual' && f.estado === 'pagado')
+
+  return (
+    <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start">
+      <Tarjeta className="flex flex-col px-6 pt-5 pb-3 md:px-8">
+        <TituloSeccion
+          className="pb-1"
+          accion={
+            <Boton tamano="sm" variante="suave" icono={Plus} onClick={() => setNuevo(true)}>
+              Nuevo anual
+            </Boton>
+          }
+        >
+          Gastos anuales
+        </TituloSeccion>
+        {anuales.length === 0 ? (
+          <Vacio
+            icono={CalendarCheck}
+            titulo="Nada anual todavía"
+            texto="Matrícula del carro, seguro, suscripciones anuales, impuestos. Pon el monto y la fecha, y la app sugiere cuánto apartar cada mes para llegar sin sustos."
+            accion={
+              <Boton icono={Plus} onClick={() => setNuevo(true)}>
+                Agregar el primero
+              </Boton>
+            }
+          />
+        ) : (
+          <div className="flex flex-col divide-y divide-borde">
+            {anuales.map((e) => (
+              <FilaFondo
+                key={e.fondo.id}
+                e={e}
+                onAbrir={() => acciones.abrir('detalle', e)}
+                onAportar={() => acciones.abrir('aportar', e)}
+                onPagar={() => acciones.abrir('pagar', e)}
+              />
+            ))}
+          </div>
+        )}
+      </Tarjeta>
+
+      <aside className="flex flex-col gap-6 lg:sticky lg:top-[100px]">
+        <Tarjeta className="flex flex-col gap-4 p-6">
+          <h2 className="font-semibold tracking-tight">{nombreMes(mes)}</h2>
+          <div className="flex flex-col">
+            <span className="text-[13px] text-texto-3">Sugerido para anuales</span>
+            <Monto valor={sugeridoAnuales} decimales={false} className="text-2xl font-semibold" />
+          </div>
+          <p className="text-[13px] leading-relaxed text-texto-2">
+            Cuota = lo que falta ÷ meses hasta el vencimiento. Se recalcula sola si un mes apartan menos o más.
+          </p>
+          <Boton icono={HandCoins} onClick={() => setApartar(true)} disabled={resumen.fondos.length === 0}>
+            Apartar cuotas del mes
+          </Boton>
+        </Tarjeta>
+        {pagados.length > 0 && (
+          <p className="px-2 text-[13px] text-texto-3">{pagados.length} anuales no recurrentes ya pagados.</p>
+        )}
+      </aside>
+
+      {nuevo && <FormFondo tipo="anual" onCerrar={() => setNuevo(false)} />}
+      {apartar && <ApartarMes fondos={resumen.fondos} anio={anio} mes={mes} onCerrar={() => setApartar(false)} />}
+      {acciones.elemento}
+    </div>
+  )
+}
+
+export function Presupuesto() {
+  const [params, setParams] = useSearchParams()
+  const vista = params.get('vista') === 'anuales' ? 'anuales' : 'mensual'
+
+  return (
+    <div className="flex flex-col gap-5">
+      <TabsDinero />
+      <Segmentado
+        etiqueta="Vista del presupuesto"
+        className="self-start"
+        valor={vista}
+        onChange={(v) => setParams(v === 'anuales' ? { vista: 'anuales' } : {})}
+        opciones={[
+          { valor: 'mensual', texto: 'Mensual' },
+          { valor: 'anuales', texto: 'Anuales' },
+        ]}
+      />
+      {vista === 'mensual' ? <Mensual /> : <Anuales />}
     </div>
   )
 }

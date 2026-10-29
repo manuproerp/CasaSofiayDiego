@@ -1,6 +1,7 @@
-import { ChartPieSlice, GearSix, House, Plus, Receipt, type Icon } from '@phosphor-icons/react'
+import { ChartPieSlice, GearSix, House, ListHeart, Plus, Receipt, Target, Tray, Wallet, type Icon } from '@phosphor-icons/react'
 import type { ReactNode } from 'react'
-import { NavLink, useLocation } from 'react-router-dom'
+import { Link, NavLink, useLocation } from 'react-router-dom'
+import { usePorAprobar } from '@/componentes/gastos/Aprobaciones'
 import { useRegistrarGasto } from '@/componentes/gastos/RegistroGasto'
 import { Boton, cx } from '@/componentes/ui/base'
 import { Avatar } from '@/componentes/ui/datos'
@@ -13,14 +14,33 @@ interface ItemNav {
   icono: Icon
   grupo?: string
   conMes?: boolean
+  insignia?: boolean
 }
 
-/** Navegación del bloque 1. Cocina y Casa se agregan en los siguientes bloques. */
+/** Navegación. Cocina y Casa se agregan en los siguientes bloques. */
 const NAV: ItemNav[] = [
   { a: '/', texto: 'Inicio', icono: House, conMes: true },
+  { a: '/aprobaciones', texto: 'Por aprobar', icono: Tray, insignia: true },
   { a: '/gastos', texto: 'Gastos', icono: Receipt, grupo: 'Dinero', conMes: true },
   { a: '/presupuesto', texto: 'Presupuesto', icono: ChartPieSlice, grupo: 'Dinero', conMes: true },
+  { a: '/wishlist', texto: 'Wishlist', icono: ListHeart, grupo: 'Dinero' },
+  { a: '/metas', texto: 'Metas', icono: Target, grupo: 'Dinero', conMes: true },
 ]
+const RUTAS_DINERO = ['/gastos', '/presupuesto', '/wishlist', '/metas']
+
+function Insignia({ n, className }: { n: number; className?: string }) {
+  if (!n) return null
+  return (
+    <span
+      className={cx(
+        'num inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-ambar-barra px-1.5 text-[11px] font-semibold text-white',
+        className,
+      )}
+    >
+      {n}
+    </span>
+  )
+}
 const AJUSTES: ItemNav = { a: '/ajustes', texto: 'Ajustes', icono: GearSix }
 
 function Marca({ compacta }: { compacta?: boolean }) {
@@ -39,7 +59,7 @@ function Marca({ compacta }: { compacta?: boolean }) {
   )
 }
 
-function EnlaceLateral({ item }: { item: ItemNav }) {
+function EnlaceLateral({ item, n = 0 }: { item: ItemNav; n?: number }) {
   return (
     <NavLink
       to={item.a}
@@ -54,8 +74,12 @@ function EnlaceLateral({ item }: { item: ItemNav }) {
     >
       {({ isActive }) => (
         <>
-          <item.icono size={24} weight={isActive ? 'fill' : 'regular'} />
-          <span>{item.texto}</span>
+          <span className="relative">
+            <item.icono size={24} weight={isActive ? 'fill' : 'regular'} />
+            {item.insignia && <Insignia n={n} className="absolute -top-2 -right-3 lg:hidden" />}
+          </span>
+          <span className="text-center leading-tight lg:flex-1 lg:text-left">{item.texto}</span>
+          {item.insignia && <Insignia n={n} className="hidden lg:inline-flex" />}
         </>
       )}
     </NavLink>
@@ -64,6 +88,7 @@ function EnlaceLateral({ item }: { item: ItemNav }) {
 
 function BarraLateral() {
   const { yo } = useYo()
+  const { items: pendientes } = usePorAprobar()
   const { personas } = usePersonas()
   const grupos = [...new Set(NAV.map((n) => n.grupo ?? ''))]
   return (
@@ -79,7 +104,7 @@ function BarraLateral() {
             )}
             {g && <span className="mx-auto my-2 h-px w-8 bg-sobre-hero/15 lg:hidden" aria-hidden />}
             {NAV.filter((n) => (n.grupo ?? '') === g).map((n) => (
-              <EnlaceLateral key={n.a} item={n} />
+              <EnlaceLateral key={n.a} item={n} n={n.insignia ? pendientes.length : 0} />
             ))}
           </div>
         ))}
@@ -102,7 +127,15 @@ function BarraLateral() {
 
 function BarraInferior() {
   const registrar = useRegistrarGasto()
-  const items = [NAV[0], NAV[2], null, NAV[1], AJUSTES]
+  const { pathname } = useLocation()
+  const { items: pendientes } = usePorAprobar()
+  const items: ({ a: string; texto: string; icono: Icon; activo: boolean; n?: number } | null)[] = [
+    { a: '/', texto: 'Inicio', icono: House, activo: pathname === '/' },
+    { a: '/gastos', texto: 'Dinero', icono: Wallet, activo: RUTAS_DINERO.some((r) => pathname.startsWith(r)) },
+    null,
+    { a: '/aprobaciones', texto: 'Aprobar', icono: Tray, activo: pathname.startsWith('/aprobaciones'), n: pendientes.length },
+    { a: '/ajustes', texto: 'Ajustes', icono: GearSix, activo: pathname.startsWith('/ajustes') },
+  ]
   return (
     <nav
       aria-label="Principal"
@@ -111,24 +144,21 @@ function BarraInferior() {
       <div className="grid h-[68px] grid-cols-5 items-center px-2">
         {items.map((n, i) =>
           n ? (
-            <NavLink
+            <Link
               key={n.a}
               to={n.a}
-              end={n.a === '/'}
-              className={({ isActive }) =>
-                cx(
-                  'flex h-full flex-col items-center justify-center gap-1 text-[11px] font-medium',
-                  isActive ? 'text-primario' : 'text-texto-3',
-                )
-              }
-            >
-              {({ isActive }) => (
-                <>
-                  <n.icono size={24} weight={isActive ? 'fill' : 'regular'} />
-                  {n.texto}
-                </>
+              aria-current={n.activo ? 'page' : undefined}
+              className={cx(
+                'flex h-full flex-col items-center justify-center gap-1 text-[11px] font-medium',
+                n.activo ? 'text-primario' : 'text-texto-3',
               )}
-            </NavLink>
+            >
+              <span className="relative">
+                <n.icono size={24} weight={n.activo ? 'fill' : 'regular'} />
+                {!!n.n && <Insignia n={n.n} className="absolute -top-1.5 -right-3" />}
+              </span>
+              {n.texto}
+            </Link>
           ) : (
             <div key={i} className="flex justify-center">
               <button

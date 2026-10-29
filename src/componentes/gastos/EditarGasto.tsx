@@ -32,7 +32,7 @@ export function EditarGasto({ gasto, onCerrar }: { gasto: Gasto; onCerrar: () =>
   const montoL = monto ? aLempiras(monto, moneda, tc) : 0
   const umbral = config?.umbral_aprobacion
   const vuelvePendiente =
-    tipo === 'hogar' && !!umbral && montoL >= umbral && gasto.estado === 'aprobado' && montoL > gasto.monto_lempiras
+    tipo === 'hogar' && !gasto.fondo_id && !gasto.wishlist_id && !!umbral && montoL >= umbral && gasto.estado === 'aprobado' && montoL > gasto.monto_lempiras
 
   const errMonto = !monto ? 'Escribe un monto mayor a cero' : null
   const errTc = moneda === 'USD' && !tc ? 'Falta el tipo de cambio' : null
@@ -53,7 +53,7 @@ export function EditarGasto({ gasto, onCerrar }: { gasto: Gasto; onCerrar: () =>
         categoria_id: tipo === 'hogar' ? categoriaId : null,
         persona_id: personaId,
         descripcion: descripcion.trim() || null,
-        presupuesto_id: tipo === 'hogar' ? gasto.presupuesto_id : null,
+        wishlist_id: tipo === 'hogar' ? gasto.wishlist_id : null,
       })
       avisar('Gasto actualizado')
       onCerrar()

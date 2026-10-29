@@ -3,12 +3,17 @@ import { useMemo } from 'react'
 import { rangoMes } from '@/lib/formato'
 import { supabase } from '@/lib/supabase'
 import type {
+  Aporte,
   Aprobacion,
+  AprobacionWishlist,
   Categoria,
   Configuracion,
   CorreoPermitido,
+  Fondo,
   Gasto,
   ItemPresupuesto,
+  ItemWishlist,
+  Moneda,
   Perfil,
   TipoCambio,
 } from '@/lib/tipos'
@@ -25,6 +30,10 @@ export const CLAVES = {
   presupuesto: ['presupuesto'],
   gastos: ['gastos'],
   aprobaciones: ['aprobaciones'],
+  fondos: ['fondos'],
+  aportes: ['aportes'],
+  wishlist: ['wishlist'],
+  wishlistAprobaciones: ['wishlist_aprobaciones'],
 } as const
 
 async function datos<T>(p: PromiseLike<{ data: T | null; error: unknown }>): Promise<T> {
@@ -167,25 +176,6 @@ export function useGastosMes(anio: number, mes: number) {
   })
 }
 
-/** Gastos del año con vínculo a un eventual (para saber si ya se pagó) */
-export function usePagosEventuales(anio: number) {
-  return useQuery({
-    queryKey: [...CLAVES.gastos, 'eventuales', anio],
-    queryFn: async () => {
-      const filas = await datos<Gasto[]>(
-        supabase
-          .from('gastos')
-          .select('*')
-          .not('presupuesto_id', 'is', null)
-          .neq('estado', 'rechazado')
-          .gte('fecha', `${anio}-01-01`)
-          .lte('fecha', `${anio}-12-31`),
-      )
-      return filas.map(normalizarGasto)
-    },
-  })
-}
-
 export function usePendientes() {
   return useQuery({
     queryKey: [...CLAVES.gastos, 'pendientes'],
@@ -211,7 +201,7 @@ export function useAprobaciones(gastoIds: string[]) {
 
 export type NuevoGasto = Pick<
   Gasto,
-  'fecha' | 'monto' | 'moneda' | 'tipo_cambio' | 'tipo' | 'categoria_id' | 'persona_id' | 'descripcion' | 'presupuesto_id'
+  'fecha' | 'monto' | 'moneda' | 'tipo_cambio' | 'tipo' | 'categoria_id' | 'persona_id' | 'descripcion' | 'wishlist_id'
 >
 
 export function useGuardarGasto() {
@@ -226,6 +216,7 @@ export function useGuardarGasto() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: CLAVES.gastos })
       qc.invalidateQueries({ queryKey: CLAVES.aprobaciones })
+      qc.invalidateQueries({ queryKey: CLAVES.wishlist })
     },
   })
 }
@@ -367,5 +358,186 @@ export function useQuitarCorreo() {
   return useMutation({
     mutationFn: async (email: string) => datos(supabase.from('correos_permitidos').delete().eq('email', email)),
     onSuccess: () => qc.invalidateQueries({ queryKey: CLAVES.correos }),
+  })
+}
+
+// ───────────── Apartados (anuales y metas) ─────────────
+
+function normalizarFondo(f: Fondo): Fondo {
+  return { ...f, monto_objetivo: Number(f.monto_objetivo) }
+}
+
+export function useFondos() {
+  return useQuery({
+    queryKey: CLAVES.fondos,
+    queryFn: async () => {
+      const filas = await datos<Fondo[]>(
+        supabase.from('fondos').select('*').order('fecha_objetivo', { ascending: true, nullsFirst: false }).order('creado_en'),
+      )
+      return filas.map(normalizarFondo)
+    },
+  })
+}
+
+export function useAportes() {
+  return useQuery({
+    queryKey: CLAVES.aportes,
+    queryFn: async () => {
+      const filas = await datos<Aporte[]>(
+        supabase.from('fondos_aportes').select('*').order('fecha', { ascending: false }).order('creado_en', { ascending: false }),
+      )
+      return filas.map((a) => ({ ...a, monto: Number(a.monto) }))
+    },
+  })
+}
+
+export type NuevoFondo = Pick<
+  Fondo,
+  'tipo' | 'nombre' | 'categoria_id' | 'monto_objetivo' | 'moneda' | 'fecha_objetivo' | 'recurrente' | 'nota'
+>
+
+export function useGuardarFondo() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ id, ...f }: Partial<NuevoFondo> & { id?: string; estado?: Fondo['estado'] }) => {
+      const q = id ? supabase.from('fondos').update(f).eq('id', id) : supabase.from('fondos').insert(f as NuevoFondo)
+      return datos(q)
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: CLAVES.fondos }),
+  })
+}
+
+export function useBorrarFondo() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (id: string) => datos(supabase.from('fondos').delete().eq('id', id)),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: CLAVES.fondos })
+      qc.invalidateQueries({ queryKey: CLAVES.aportes })
+      qc.invalidateQueries({ queryKey: CLAVES.wishlist })
+    },
+  })
+}
+
+export function useAportar() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (lista: { fondo_id: string; monto: number; anio: number; mes: number; fecha?: string; nota?: string | null }[]) =>
+      datos(supabase.from('fondos_aportes').insert(lista)),
+    onSuccess: () => qc.invalidateQueries({ queryKey: CLAVES.aportes }),
+  })
+}
+
+export function useBorrarAporte() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (id: string) => datos(supabase.from('fondos_aportes').delete().eq('id', id)),
+    onSuccess: () => qc.invalidateQueries({ queryKey: CLAVES.aportes }),
+  })
+}
+
+export function usePagarFondo() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (v: {
+      fondo: string
+      monto: number
+      moneda: Moneda
+      tipo_cambio: number | null
+      fecha: string
+      persona: string
+      categoria: string | null
+      descripcion: string | null
+    }) =>
+      datos<string>(
+        supabase.rpc('pagar_fondo', {
+          p_fondo: v.fondo,
+          p_monto: v.monto,
+          p_moneda: v.moneda,
+          p_tipo_cambio: v.tipo_cambio,
+          p_fecha: v.fecha,
+          p_persona: v.persona,
+          p_categoria: v.categoria,
+          p_descripcion: v.descripcion,
+        }),
+      ),
+    onSuccess: () => {
+      for (const c of [CLAVES.fondos, CLAVES.aportes, CLAVES.gastos, CLAVES.wishlist]) qc.invalidateQueries({ queryKey: c })
+    },
+  })
+}
+
+// ───────────── Wishlist ─────────────
+
+export function useWishlist() {
+  return useQuery({
+    queryKey: CLAVES.wishlist,
+    queryFn: async () => {
+      const filas = await datos<ItemWishlist[]>(supabase.from('wishlist').select('*').order('creado_en', { ascending: false }))
+      return filas.map((w) => ({ ...w, monto_estimado: Number(w.monto_estimado) }))
+    },
+  })
+}
+
+export function useAprobacionesWishlist() {
+  return useQuery({
+    queryKey: CLAVES.wishlistAprobaciones,
+    queryFn: () => datos<AprobacionWishlist[]>(supabase.from('wishlist_aprobaciones').select('*')),
+  })
+}
+
+export type NuevoItemWishlist = Pick<ItemWishlist, 'nombre' | 'nota' | 'enlace' | 'monto_estimado' | 'moneda' | 'prioridad'> & {
+  propuesto_por?: string
+}
+
+export function useGuardarWishlist() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ id, ...w }: Partial<NuevoItemWishlist> & { id?: string }) => {
+      const q = id
+        ? supabase.from('wishlist').update(w).eq('id', id).select().single()
+        : supabase.from('wishlist').insert(w as NuevoItemWishlist).select().single()
+      return datos<ItemWishlist>(q)
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: CLAVES.wishlist })
+      qc.invalidateQueries({ queryKey: CLAVES.wishlistAprobaciones })
+    },
+  })
+}
+
+export function useBorrarWishlist() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (id: string) => datos(supabase.from('wishlist').delete().eq('id', id)),
+    onSuccess: () => qc.invalidateQueries({ queryKey: CLAVES.wishlist }),
+  })
+}
+
+export function useDecidirWishlist() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (v: { item: string; persona: string; decision: 'aprobado' | 'rechazado'; pin?: string }) =>
+      datos<string>(
+        supabase.rpc('decidir_wishlist', { p_item: v.item, p_persona: v.persona, p_decision: v.decision, p_pin: v.pin ?? null }),
+      ),
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: CLAVES.wishlist })
+      qc.invalidateQueries({ queryKey: CLAVES.wishlistAprobaciones })
+    },
+  })
+}
+
+export function useCrearMetaDesdeWishlist() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (v: { item: string; fecha: string | null; categoria: string | null }) =>
+      datos<string>(
+        supabase.rpc('crear_meta_desde_wishlist', { p_item: v.item, p_fecha_objetivo: v.fecha, p_categoria: v.categoria }),
+      ),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: CLAVES.wishlist })
+      qc.invalidateQueries({ queryKey: CLAVES.fondos })
+    },
   })
 }

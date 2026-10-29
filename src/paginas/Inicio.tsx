@@ -1,7 +1,7 @@
-import { ArrowRight, CalendarCheck, CheckCircle, GearSix, Plus, Receipt, Wallet } from '@phosphor-icons/react'
+import { ArrowRight, CalendarCheck, CheckCircle, GearSix, Plus, Receipt, Target, Wallet } from '@phosphor-icons/react'
 import { useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { ListaAprobaciones } from '@/componentes/gastos/Aprobaciones'
+import { ListaAprobaciones, usePorAprobar } from '@/componentes/gastos/Aprobaciones'
 import { EditarGasto } from '@/componentes/gastos/EditarGasto'
 import { FilaGasto } from '@/componentes/gastos/FilaGasto'
 import { useIndicePersona, useRegistrarGasto } from '@/componentes/gastos/RegistroGasto'
@@ -9,11 +9,11 @@ import { TipoCambioRapido } from '@/componentes/TipoCambioRapido'
 import { Boton, cx, Esqueleto, ErrorEnLinea, Etiqueta, Tarjeta, Vacio } from '@/componentes/ui/base'
 import { Avatar, Barra, Monto } from '@/componentes/ui/datos'
 import { IconoCategoria } from '@/componentes/ui/iconos'
-import { useMapaCategorias, usePendientes, usePersonas, useYo } from '@/datos/consultas'
+import { useMapaCategorias, usePersonas, useYo } from '@/datos/consultas'
 import { useMes } from '@/datos/mes'
-import { useResumenMes } from '@/datos/resumen'
+import { useApartados, useResumenMes } from '@/datos/resumen'
 import { semaforo } from '@/lib/calculos'
-import { diasEnMes, dinero, fechaLarga, nombreMes, partesHoy, saludo } from '@/lib/formato'
+import { diasEnMes, dinero, fechaLarga, nombreMes, partesHoy, plazo, saludo } from '@/lib/formato'
 import type { Gasto } from '@/lib/tipos'
 
 function Titulo({ children, a, texto = 'Ver todo' }: { children: React.ReactNode; a?: string; texto?: string }) {
@@ -37,8 +37,9 @@ export function Inicio() {
   const { personas } = usePersonas()
   const indice = useIndicePersona()
   const { mapa: categorias } = useMapaCategorias()
-  const pendientes = usePendientes()
+  const { items: porAprobar } = usePorAprobar()
   const { resumen, mesadas, gastos, cargando, error, reintentar } = useResumenMes(anio, mes)
+  const apartados = useApartados(anio, mes)
   const [editando, setEditando] = useState<Gasto | null>(null)
 
   const hoy = partesHoy()
@@ -53,8 +54,12 @@ export function Inicio() {
     [resumen],
   )
   const recientes = gastos.slice(0, 6)
-  const eventualesPendientes = (resumen?.eventuales ?? []).filter((e) => !e.pago)
-  const hayPendientes = (pendientes.data?.length ?? 0) > 0
+  const hayPendientes = porAprobar.length > 0
+  const proximos = (apartados.resumen?.fondos ?? [])
+    .filter((e) => e.fondo.fecha_objetivo && e.apartado < e.fondo.monto_objetivo)
+    .sort((a, b) => (a.dias ?? 1e9) - (b.dias ?? 1e9))
+    .slice(0, 3)
+  const faltaApartar = Math.max(0, (apartados.resumen?.sugeridoMes ?? 0) - (apartados.resumen?.aportadoMes ?? 0))
 
   if (error) return <ErrorEnLinea error={error} reintentar={reintentar} />
 
@@ -155,12 +160,12 @@ export function Inicio() {
         >
           <div className="flex items-center justify-between">
             <h2 className="font-semibold tracking-tight">Por aprobar</h2>
-            {hayPendientes && <Etiqueta tono="ambar">{pendientes.data!.length}</Etiqueta>}
+            {hayPendientes && <Etiqueta tono="ambar">{porAprobar.length}</Etiqueta>}
           </div>
           <ListaAprobaciones limite={3} compacta />
-          {(pendientes.data?.length ?? 0) > 3 && (
-            <Link to="/gastos" className="text-[13px] font-medium text-primario hover:underline">
-              Ver los {pendientes.data!.length}
+          {porAprobar.length > 3 && (
+            <Link to="/aprobaciones" className="text-[13px] font-medium text-primario hover:underline">
+              Ver los {porAprobar.length}
             </Link>
           )}
         </Tarjeta>
@@ -280,28 +285,52 @@ export function Inicio() {
           )}
         </Tarjeta>
 
-        {/* Eventuales + tipo de cambio */}
+        {/* Apartados: próximos vencimientos y metas */}
         <Tarjeta className="entrar flex flex-col gap-4 p-6 max-md:order-1" style={{ ['--i' as string]: 5 }}>
-          <Titulo a="/presupuesto" texto="Ver">
-            Eventuales del mes
+          <Titulo a="/presupuesto?vista=anuales" texto="Anuales">
+            Lo que viene
           </Titulo>
-          {eventualesPendientes.length === 0 ? (
+          {apartados.cargando ? (
+            <Esqueleto className="h-24" />
+          ) : proximos.length === 0 ? (
             <p className="flex items-center gap-2.5 text-sm text-texto-2">
               <CalendarCheck size={20} className="text-v500" />
-              {(resumen?.eventuales.length ?? 0) > 0 ? 'Todos pagados.' : 'Ninguno este mes.'}
+              {(apartados.resumen?.fondos.length ?? 0) > 0 ? 'Todo apartado a tiempo.' : 'Sin gastos anuales ni metas todavía.'}
             </p>
           ) : (
-            <ul className="flex flex-col gap-3">
-              {eventualesPendientes.slice(0, 3).map((e) => (
-                <li key={e.item.id} className="flex items-center gap-3">
-                  <span className="flex size-9 items-center justify-center rounded-[10px] bg-ambar-suave text-ambar">
-                    <CalendarCheck size={18} />
-                  </span>
-                  <span className="flex-1 truncate text-sm font-medium">{e.item.descripcion}</span>
-                  <Monto valor={e.item.monto} moneda={e.item.moneda} className="text-sm font-semibold" decimales={false} />
-                </li>
-              ))}
+            <ul className="flex flex-col gap-3.5">
+              {proximos.map((e) => {
+                const urgente = e.dias != null && e.dias <= 45
+                return (
+                  <li key={e.fondo.id} className="flex flex-col gap-1.5">
+                    <div className="flex items-center gap-3">
+                      <span className={cx('flex size-9 shrink-0 items-center justify-center rounded-[10px]', urgente ? 'bg-ambar-suave text-ambar' : 'bg-primario-suave text-primario')}>
+                        {e.fondo.tipo === 'anual' ? <CalendarCheck size={18} /> : <Target size={18} />}
+                      </span>
+                      <span className="flex min-w-0 flex-1 flex-col">
+                        <span className="truncate text-sm font-medium">{e.fondo.nombre}</span>
+                        <span className={cx('text-[12px]', urgente ? 'text-ambar' : 'text-texto-3')}>{plazo(e.dias)}</span>
+                      </span>
+                      <span className="num text-sm font-semibold">{Math.round(e.pct)}%</span>
+                    </div>
+                    <div className="pl-12">
+                      <Barra real={e.apartado} total={e.fondo.monto_objetivo} />
+                    </div>
+                  </li>
+                )
+              })}
             </ul>
+          )}
+          {faltaApartar > 0 && (
+            <Link
+              to="/presupuesto?vista=anuales"
+              className="flex items-center justify-between rounded-control bg-superficie-2 px-4 py-3 text-sm hover:bg-borde"
+            >
+              <span>
+                Falta apartar <span className="num font-semibold">{dinero(faltaApartar, 'HNL', { corto: true })}</span> este mes
+              </span>
+              <ArrowRight size={16} />
+            </Link>
           )}
         </Tarjeta>
 

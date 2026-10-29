@@ -12,7 +12,10 @@ import { Acceso, NuevaContrasena } from '@/paginas/Acceso'
 import { Ajustes } from '@/paginas/Ajustes'
 import { Gastos } from '@/paginas/Gastos'
 import { Inicio } from '@/paginas/Inicio'
+import { Metas } from '@/paginas/Metas'
+import { PorAprobar } from '@/paginas/PorAprobar'
 import { Presupuesto } from '@/paginas/Presupuesto'
+import { Wishlist } from '@/paginas/Wishlist'
 
 function Pantalla({ children }: { children: React.ReactNode }) {
   return <div className="flex min-h-[100dvh] items-center px-6 md:px-16">{children}</div>
@@ -68,6 +71,9 @@ function AppConSesion() {
             <Route path="/" element={<Inicio />} />
             <Route path="/gastos" element={<Gastos />} />
             <Route path="/presupuesto" element={<Presupuesto />} />
+            <Route path="/wishlist" element={<Wishlist />} />
+            <Route path="/metas" element={<Metas />} />
+            <Route path="/aprobaciones" element={<PorAprobar />} />
             <Route path="/ajustes" element={<Ajustes />} />
             <Route
               path="*"

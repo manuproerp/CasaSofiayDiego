@@ -99,3 +99,19 @@ export function porcentaje(parte: number, total: number) {
   if (!total) return 0
   return Math.round((parte / total) * 1000) / 10
 }
+
+/** "hoy", "en 12 días", "en 3 meses", "hace 5 días" */
+export function plazo(dias: number | null | undefined) {
+  if (dias == null) return ''
+  if (dias === 0) return 'hoy'
+  if (dias === 1) return 'mañana'
+  if (dias < 0) return dias === -1 ? 'ayer' : `hace ${-dias} días`
+  if (dias < 45) return `en ${dias} días`
+  const meses = Math.round(dias / 30.4)
+  return meses < 12 ? `en ${meses} meses` : `en ${Math.round((meses / 12) * 10) / 10} años`.replace('.0 ', ' ')
+}
+
+export function sumarMeses(anio: number, mes: number, delta: number) {
+  const total = anio * 12 + (mes - 1) + delta
+  return { anio: Math.floor(total / 12), mes: (total % 12) + 1 }
+}

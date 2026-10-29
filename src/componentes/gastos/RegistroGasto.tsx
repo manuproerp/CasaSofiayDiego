@@ -26,7 +26,8 @@ export interface InicialGasto {
   tipo?: TipoGasto
   categoria_id?: string | null
   descripcion?: string | null
-  presupuesto_id?: string | null
+  /** Compra directa de un item aprobado de la wishlist (no vuelve a pedir aprobación) */
+  wishlist_id?: string | null
   titulo?: string
 }
 
@@ -82,7 +83,7 @@ function FlujoGasto({ inicial, onCerrar }: { inicial: InicialGasto; onCerrar: ()
   const tcValor = moneda === 'USD' ? parsearMonto(tcTxt) : null
   const montoL = monto ? aLempiras(monto, moneda, tcValor) : 0
   const umbral = config?.umbral_aprobacion ?? null
-  const requiereAprobacion = tipo === 'hogar' && !!umbral && montoL >= umbral
+  const requiereAprobacion = tipo === 'hogar' && !inicial.wishlist_id && !!umbral && montoL >= umbral
   const activas = categorias.filter((c) => c.activa)
   const categoria = categorias.find((c) => c.id === categoriaId)
   const indice = (id: string) => personas.findIndex((p) => p.id === id)
@@ -137,7 +138,7 @@ function FlujoGasto({ inicial, onCerrar }: { inicial: InicialGasto; onCerrar: ()
       categoria_id: tipo === 'hogar' ? categoriaId : null,
       persona_id: personaId,
       descripcion: descripcion.trim() || null,
-      presupuesto_id: tipo === 'hogar' ? (inicial.presupuesto_id ?? null) : null,
+      wishlist_id: tipo === 'hogar' ? (inicial.wishlist_id ?? null) : null,
     }
     try {
       const r = await guardar.mutateAsync(g)

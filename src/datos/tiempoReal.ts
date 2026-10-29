@@ -11,6 +11,10 @@ const TABLAS: Record<string, readonly (readonly string[])[]> = {
   configuracion: [CLAVES.config],
   tipo_cambio: [CLAVES.tc],
   perfiles: [CLAVES.perfiles],
+  fondos: [CLAVES.fondos, CLAVES.wishlist],
+  fondos_aportes: [CLAVES.aportes],
+  wishlist: [CLAVES.wishlist, CLAVES.wishlistAprobaciones],
+  wishlist_aprobaciones: [CLAVES.wishlistAprobaciones, CLAVES.wishlist],
 }
 
 /** Mantiene la tablet y los celulares sincronizados sin recargar */

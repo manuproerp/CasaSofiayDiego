@@ -1,18 +1,16 @@
 import { Trash } from '@phosphor-icons/react'
 import { useState } from 'react'
 import { useAvisar } from '@/componentes/ui/avisos'
-import { Boton, Campo, Entrada, Interruptor, Segmentado, Selector } from '@/componentes/ui/base'
+import { Boton, Campo, Entrada, Segmentado, Selector } from '@/componentes/ui/base'
 import { Hoja } from '@/componentes/ui/hoja'
 import { useBorrarPresupuesto, useCategorias, useGuardarPresupuesto } from '@/datos/consultas'
-import { useMes } from '@/datos/mes'
-import { MESES, nombreMes, parsearMonto } from '@/lib/formato'
+import { parsearMonto } from '@/lib/formato'
 import { mensajeError } from '@/lib/supabase'
 import type { ItemPresupuesto, Moneda, TipoPresupuesto } from '@/lib/tipos'
 
 const AYUDA_TIPO: Record<TipoPresupuesto, string> = {
   fijo: 'Mismo monto todos los meses: renta, internet, cuota del carro.',
   variable: 'Cambia cada mes, pon un tope: súper, gasolina, salidas.',
-  eventual: 'Cae en un mes específico: matrícula, declaración de impuestos.',
 }
 
 export function FormPartida({
@@ -25,7 +23,6 @@ export function FormPartida({
   onCerrar: () => void
 }) {
   const avisar = useAvisar()
-  const { anio, mes } = useMes()
   const { data: categorias = [] } = useCategorias()
   const guardar = useGuardarPresupuesto()
   const borrar = useBorrarPresupuesto()
@@ -35,9 +32,6 @@ export function FormPartida({
   const [descripcion, setDescripcion] = useState(partida?.descripcion ?? '')
   const [montoTxt, setMontoTxt] = useState(partida ? String(partida.monto) : '')
   const [moneda, setMoneda] = useState<Moneda>(partida?.moneda ?? 'HNL')
-  const [mesP, setMesP] = useState(partida?.mes ?? mes)
-  const [recurrente, setRecurrente] = useState(partida?.recurrente ?? true)
-  const [anioP, setAnioP] = useState(partida?.anio ?? anio)
   const [confirmar, setConfirmar] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [tocado, setTocado] = useState(false)
@@ -46,9 +40,8 @@ export function FormPartida({
   const errores = {
     categoria: !categoriaId ? 'Elige una categoría' : null,
     monto: !monto ? 'Escribe un monto mayor a cero' : null,
-    descripcion: tipo === 'eventual' && !descripcion.trim() ? 'Ponle nombre (ej. Matrícula)' : null,
   }
-  const valido = !errores.categoria && !errores.monto && !errores.descripcion
+  const valido = !errores.categoria && !errores.monto
 
   const enviar = async () => {
     setTocado(true)
@@ -62,9 +55,6 @@ export function FormPartida({
         descripcion: descripcion.trim() || null,
         monto,
         moneda,
-        mes: tipo === 'eventual' ? mesP : null,
-        recurrente: tipo === 'eventual' ? recurrente : false,
-        anio: tipo === 'eventual' && !recurrente ? anioP : null,
       })
       avisar(partida ? 'Partida actualizada' : 'Partida agregada')
       onCerrar()
@@ -127,7 +117,6 @@ export function FormPartida({
             opciones={[
               { valor: 'fijo', texto: 'Fijo' },
               { valor: 'variable', texto: 'Variable' },
-              { valor: 'eventual', texto: 'Eventual' },
             ]}
           />
           <p className="text-[13px] text-texto-3">{AYUDA_TIPO[tipo]}</p>
@@ -148,16 +137,13 @@ export function FormPartida({
           )}
         </Campo>
 
-        <Campo
-          etiqueta={tipo === 'eventual' ? 'Nombre' : 'Detalle (opcional)'}
-          error={tocado ? errores.descripcion : null}
-        >
+        <Campo etiqueta="Detalle (opcional)">
           {(id) => (
             <Entrada
               id={id}
               value={descripcion}
               onChange={(e) => setDescripcion(e.target.value)}
-              placeholder={tipo === 'eventual' ? 'Matrícula, declaración de impuestos…' : 'Ej. Tigo hogar 100 Mbps'}
+              placeholder="Ej. Tigo hogar 100 Mbps"
             />
           )}
         </Campo>
@@ -180,34 +166,9 @@ export function FormPartida({
         </div>
         {moneda === 'USD' && <p className="-mt-3 text-[13px] text-texto-3">Se convierte a lempiras con el tipo de cambio más reciente.</p>}
 
-        {tipo === 'eventual' && (
-          <div className="flex flex-col gap-4 rounded-[18px] bg-superficie-2/60 p-4">
-            <Campo etiqueta="Mes">
-              {(id) => (
-                <Selector id={id} value={mesP} onChange={(e) => setMesP(Number(e.target.value))}>
-                  {MESES.map((_, i) => (
-                    <option key={i} value={i + 1}>
-                      {nombreMes(i + 1)}
-                    </option>
-                  ))}
-                </Selector>
-              )}
-            </Campo>
-            <Interruptor
-              activo={recurrente}
-              onChange={setRecurrente}
-              etiqueta="Se repite cada año"
-              descripcion={recurrente ? `Aparecerá todos los ${nombreMes(mesP, false)}.` : 'Solo para un año.'}
-            />
-            {!recurrente && (
-              <Campo etiqueta="Año">
-                {(id) => (
-                  <Entrada id={id} type="number" inputMode="numeric" className="num" value={anioP} onChange={(e) => setAnioP(Number(e.target.value) || anio)} />
-                )}
-              </Campo>
-            )}
-          </div>
-        )}
+        <p className="text-[13px] text-texto-3">
+          Lo que cae en un mes específico (matrícula, impuestos, suscripciones anuales) va en Presupuesto → Anuales.
+        </p>
 
         {error && (
           <p role="alert" className="text-sm text-rojo">
