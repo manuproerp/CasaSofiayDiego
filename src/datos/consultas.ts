@@ -1,8 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useMemo } from 'react'
-import { rangoMes } from '@/lib/formato'
+import { sumarDias } from '@/lib/cocina'
+import { hoyISO as hoyHN, rangoMes } from '@/lib/formato'
 import { supabase } from '@/lib/supabase'
 import type {
+  Ausencia,
+  DiaTareas,
+  Tarea,
+  TareaHecha,
   Aporte,
   Aprobacion,
   AprobacionWishlist,
@@ -40,6 +45,10 @@ export const CLAVES = {
   recetas: ['recetas'],
   menu: ['menu'],
   super: ['super'],
+  tareas: ['tareas'],
+  tareasHechas: ['tareas_hechas'],
+  ausencias: ['ausencias'],
+  tareasDias: ['tareas_dias'],
 } as const
 
 async function datos<T>(p: PromiseLike<{ data: T | null; error: unknown }>): Promise<T> {
@@ -688,5 +697,118 @@ export function useGenerarSuper() {
   return useMutation({
     mutationFn: async (lunes: string) => datos<number>(supabase.rpc('generar_super', { p_lunes: lunes })),
     onSuccess: () => qc.invalidateQueries({ queryKey: CLAVES.super }),
+  })
+}
+
+// ───────────── Casa: tareas y ausencias ─────────────
+
+export function useTareas() {
+  return useQuery({
+    queryKey: CLAVES.tareas,
+    queryFn: () => datos<Tarea[]>(supabase.from('tareas').select('*').order('orden').order('nombre')),
+  })
+}
+
+/** Lo hecho en los últimos 30 días */
+export function useTareasHechas() {
+  const desde = sumarDias(hoyHN(), -30)
+  return useQuery({
+    queryKey: [...CLAVES.tareasHechas, desde],
+    queryFn: () =>
+      datos<TareaHecha[]>(supabase.from('tareas_hechas').select('*').gte('fecha', desde).order('creado_en', { ascending: false })),
+  })
+}
+
+export function useAusencias() {
+  return useQuery({
+    queryKey: CLAVES.ausencias,
+    queryFn: () => datos<Ausencia[]>(supabase.from('ausencias').select('*').order('desde', { ascending: false })),
+  })
+}
+
+/** Días cerrados para las rachas. Antes de leer, cierra los días que falten (idempotente). */
+export function useDiasTareas() {
+  return useQuery({
+    queryKey: CLAVES.tareasDias,
+    queryFn: async () => {
+      await supabase.rpc('cerrar_dias_tareas')
+      return datos<DiaTareas[]>(supabase.from('tareas_dias').select('*').order('fecha'))
+    },
+    staleTime: 5 * 60_000,
+  })
+}
+
+export function useCompletarTarea() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (v: { tarea: Tarea; persona?: string | null }) =>
+      datos<string>(supabase.rpc('completar_tarea', { p_tarea: v.tarea.id, p_persona: v.persona ?? null })),
+    onMutate: async ({ tarea }) => {
+      // Se siente instantáneo en la tablet
+      await qc.cancelQueries({ queryKey: CLAVES.tareas })
+      const previo = qc.getQueryData<Tarea[]>(CLAVES.tareas)
+      const proxima = sumarDias(hoyHN(), tarea.cada_dias)
+      qc.setQueryData<Tarea[]>(CLAVES.tareas, (l) => l?.map((t) => (t.id === tarea.id ? { ...t, proxima_fecha: proxima } : t)))
+      return { previo }
+    },
+    onError: (_e, _v, ctx) => {
+      if (ctx?.previo) qc.setQueryData(CLAVES.tareas, ctx.previo)
+    },
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: CLAVES.tareas })
+      qc.invalidateQueries({ queryKey: CLAVES.tareasHechas })
+    },
+  })
+}
+
+export function useDeshacerTarea() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (hecha: string) => datos(supabase.rpc('deshacer_tarea', { p_hecha: hecha })),
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: CLAVES.tareas })
+      qc.invalidateQueries({ queryKey: CLAVES.tareasHechas })
+    },
+  })
+}
+
+export type TareaNueva = Pick<Tarea, 'nombre' | 'cada_dias' | 'modo' | 'asignada_a' | 'le_toca' | 'proxima_fecha' | 'activa' | 'orden'>
+
+export function useGuardarTarea() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ id, ...t }: Partial<TareaNueva> & { id?: string }) =>
+      datos(id ? supabase.from('tareas').update(t).eq('id', id) : supabase.from('tareas').insert(t as TareaNueva)),
+    onSuccess: () => qc.invalidateQueries({ queryKey: CLAVES.tareas }),
+  })
+}
+
+export function useBorrarTarea() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (id: string) => datos(supabase.from('tareas').delete().eq('id', id)),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: CLAVES.tareas })
+      qc.invalidateQueries({ queryKey: CLAVES.tareasHechas })
+    },
+  })
+}
+
+export type AusenciaNueva = Pick<Ausencia, 'persona_id' | 'desde' | 'hasta' | 'motivo'>
+
+export function useGuardarAusencia() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ id, ...a }: AusenciaNueva & { id?: string }) =>
+      datos(id ? supabase.from('ausencias').update(a).eq('id', id) : supabase.from('ausencias').insert(a)),
+    onSuccess: () => qc.invalidateQueries({ queryKey: CLAVES.ausencias }),
+  })
+}
+
+export function useBorrarAusencia() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (id: string) => datos(supabase.from('ausencias').delete().eq('id', id)),
+    onSuccess: () => qc.invalidateQueries({ queryKey: CLAVES.ausencias }),
   })
 }

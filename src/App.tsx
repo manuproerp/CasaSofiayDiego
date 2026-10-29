@@ -10,6 +10,7 @@ import { useTiempoReal } from '@/datos/tiempoReal'
 import { supabase } from '@/lib/supabase'
 import { Acceso, NuevaContrasena } from '@/paginas/Acceso'
 import { Ajustes } from '@/paginas/Ajustes'
+import { Ausencias } from '@/paginas/Ausencias'
 import { Gastos } from '@/paginas/Gastos'
 import { Inicio } from '@/paginas/Inicio'
 import { Menu } from '@/paginas/Menu'
@@ -18,6 +19,7 @@ import { PorAprobar } from '@/paginas/PorAprobar'
 import { Presupuesto } from '@/paginas/Presupuesto'
 import { Recetas } from '@/paginas/Recetas'
 import { Super } from '@/paginas/Super'
+import { Tareas } from '@/paginas/Tareas'
 import { Wishlist } from '@/paginas/Wishlist'
 
 function Pantalla({ children }: { children: React.ReactNode }) {
@@ -80,6 +82,8 @@ function AppConSesion() {
             <Route path="/menu" element={<Menu />} />
             <Route path="/recetas" element={<Recetas />} />
             <Route path="/super" element={<Super />} />
+            <Route path="/tareas" element={<Tareas />} />
+            <Route path="/ausencias" element={<Ausencias />} />
             <Route path="/ajustes" element={<Ajustes />} />
             <Route
               path="*"

@@ -14,6 +14,11 @@ const COCINA = [
   { a: '/super', texto: 'Súper' },
 ]
 
+const CASA = [
+  { a: '/tareas', texto: 'Tareas' },
+  { a: '/ausencias', texto: 'Ausencias' },
+]
+
 /** Pestañas de sección en el celular (en iPad la barra lateral ya las muestra) */
 function Tabs({ tabs, etiqueta }: { tabs: { a: string; texto: string }[]; etiqueta: string }) {
   return (
@@ -44,4 +49,8 @@ export function TabsDinero() {
 
 export function TabsCocina() {
   return <Tabs tabs={COCINA} etiqueta="Cocina" />
+}
+
+export function TabsCasa() {
+  return <Tabs tabs={CASA} etiqueta="Casa" />
 }

@@ -5,6 +5,7 @@ import { ListaAprobaciones, usePorAprobar } from '@/componentes/gastos/Aprobacio
 import { EditarGasto } from '@/componentes/gastos/EditarGasto'
 import { FilaGasto } from '@/componentes/gastos/FilaGasto'
 import { useIndicePersona, useRegistrarGasto } from '@/componentes/gastos/RegistroGasto'
+import { TareasInicio } from '@/componentes/tareas/TareasInicio'
 import { TipoCambioRapido } from '@/componentes/TipoCambioRapido'
 import { Boton, cx, Esqueleto, ErrorEnLinea, Etiqueta, Tarjeta, Vacio } from '@/componentes/ui/base'
 import { Avatar, Barra, Monto } from '@/componentes/ui/datos'
@@ -176,42 +177,9 @@ export function Inicio() {
           )}
         </Tarjeta>
 
-        {/* Categorías en alerta */}
-        <Tarjeta className="entrar flex flex-col gap-4 p-6 max-md:order-3" style={{ ['--i' as string]: 2 }}>
-          <Titulo a="/presupuesto" texto="Presupuesto">
-            Cómo van las categorías
-          </Titulo>
-          {cargando ? (
-            <div className="flex flex-col gap-4">
-              <Esqueleto className="h-10" />
-              <Esqueleto className="h-10" />
-            </div>
-          ) : (resumen?.filas.length ?? 0) === 0 ? (
-            <p className="text-sm text-texto-2">Cuando armen el presupuesto, aquí verán las categorías que se están pasando.</p>
-          ) : alertas.length === 0 ? (
-            <div className="flex items-center gap-3 text-sm text-texto-2">
-              <CheckCircle size={22} weight="fill" className="text-v500" />
-              Todas las categorías van dentro del presupuesto.
-            </div>
-          ) : (
-            <ul className="grid grid-cols-1 gap-x-8 gap-y-4 sm:grid-cols-2">
-              {alertas.map((f) => (
-                <li key={f.categoria.id} className="flex flex-col gap-2">
-                  <div className="flex items-center gap-2.5">
-                    <IconoCategoria nombre={f.categoria.icono} size={20} className={f.semaforo === 'excedido' ? 'text-rojo' : 'text-ambar'} />
-                    <span className="flex-1 truncate font-medium">{f.categoria.nombre}</span>
-                    <span className={cx('num text-sm font-semibold', f.semaforo === 'excedido' ? 'text-rojo' : 'text-ambar')}>
-                      {Math.round((f.real / f.presupuesto) * 100)}%
-                    </span>
-                  </div>
-                  <Barra real={f.real} total={f.presupuesto} semaforo={f.semaforo} />
-                  <span className="num text-[12px] text-texto-3">
-                    {dinero(f.real, 'HNL', { corto: true })} de {dinero(f.presupuesto, 'HNL', { corto: true })}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
+        {/* Tareas de hoy */}
+        <Tarjeta className="entrar p-6 max-md:order-1" style={{ ['--i' as string]: 2 }}>
+          <TareasInicio />
         </Tarjeta>
 
         {/* Hoy en la cocina */}
@@ -255,6 +223,44 @@ export function Inicio() {
             </span>
             <ArrowRight size={16} />
           </Link>
+        </Tarjeta>
+
+        {/* Categorías en alerta */}
+        <Tarjeta className="entrar flex flex-col gap-4 p-6 max-md:order-3" style={{ ['--i' as string]: 2 }}>
+          <Titulo a="/presupuesto" texto="Presupuesto">
+            Cómo van las categorías
+          </Titulo>
+          {cargando ? (
+            <div className="flex flex-col gap-4">
+              <Esqueleto className="h-10" />
+              <Esqueleto className="h-10" />
+            </div>
+          ) : (resumen?.filas.length ?? 0) === 0 ? (
+            <p className="text-sm text-texto-2">Cuando armen el presupuesto, aquí verán las categorías que se están pasando.</p>
+          ) : alertas.length === 0 ? (
+            <div className="flex items-center gap-3 text-sm text-texto-2">
+              <CheckCircle size={22} weight="fill" className="text-v500" />
+              Todas las categorías van dentro del presupuesto.
+            </div>
+          ) : (
+            <ul className="grid grid-cols-1 gap-x-8 gap-y-4 sm:grid-cols-2">
+              {alertas.map((f) => (
+                <li key={f.categoria.id} className="flex flex-col gap-2">
+                  <div className="flex items-center gap-2.5">
+                    <IconoCategoria nombre={f.categoria.icono} size={20} className={f.semaforo === 'excedido' ? 'text-rojo' : 'text-ambar'} />
+                    <span className="flex-1 truncate font-medium">{f.categoria.nombre}</span>
+                    <span className={cx('num text-sm font-semibold', f.semaforo === 'excedido' ? 'text-rojo' : 'text-ambar')}>
+                      {Math.round((f.real / f.presupuesto) * 100)}%
+                    </span>
+                  </div>
+                  <Barra real={f.real} total={f.presupuesto} semaforo={f.semaforo} />
+                  <span className="num text-[12px] text-texto-3">
+                    {dinero(f.real, 'HNL', { corto: true })} de {dinero(f.presupuesto, 'HNL', { corto: true })}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
         </Tarjeta>
 
         {/* Mesadas */}

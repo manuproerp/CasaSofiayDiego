@@ -19,6 +19,10 @@ const TABLAS: Record<string, readonly (readonly string[])[]> = {
   receta_ingredientes: [CLAVES.recetas],
   menu: [CLAVES.menu],
   super_items: [CLAVES.super],
+  tareas: [CLAVES.tareas],
+  tareas_hechas: [CLAVES.tareasHechas, CLAVES.tareas],
+  ausencias: [CLAVES.ausencias],
+  tareas_dias: [CLAVES.tareasDias],
 }
 
 /** Mantiene la tablet y los celulares sincronizados sin recargar */

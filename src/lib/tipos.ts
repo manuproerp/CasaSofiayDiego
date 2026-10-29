@@ -196,3 +196,48 @@ export interface ItemSuper {
   agregado_por: string | null
   creado_en: string
 }
+
+export type ModoTarea = 'fija' | 'rotativa'
+
+export interface Tarea {
+  id: string
+  nombre: string
+  cada_dias: number
+  modo: ModoTarea
+  asignada_a: string | null
+  le_toca: string | null
+  proxima_fecha: string
+  activa: boolean
+  orden: number
+  creado_por: string | null
+  creado_en: string
+}
+
+export interface TareaHecha {
+  id: string
+  tarea_id: string
+  fecha: string
+  hecha_por: string | null
+  registrado_por: string | null
+  proxima_anterior: string
+  le_tocaba_anterior: string | null
+  creado_en: string
+}
+
+export interface Ausencia {
+  id: string
+  persona_id: string
+  desde: string
+  hasta: string
+  motivo: string | null
+  creado_por: string | null
+  creado_en: string
+}
+
+export interface DiaTareas {
+  persona_id: string
+  fecha: string
+  estado: 'cumplido' | 'fallado' | 'congelado'
+  pendientes: number
+  hechas: number
+}

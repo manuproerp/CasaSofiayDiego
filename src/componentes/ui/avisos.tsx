@@ -3,22 +3,30 @@ import { createContext, useCallback, useContext, useRef, useState, type ReactNod
 import { createPortal } from 'react-dom'
 import { cx } from './base'
 
+interface Accion {
+  texto: string
+  alPulsar: () => void
+}
+
 interface Toast {
   id: number
   texto: string
   tono: 'ok' | 'error'
+  accion?: Accion
 }
 
-const Ctx = createContext<((texto: string, tono?: Toast['tono']) => void) | null>(null)
+type Avisar = (texto: string, tono?: Toast['tono'], accion?: Accion) => void
+
+const Ctx = createContext<Avisar | null>(null)
 
 export function ProveedorAvisos({ children }: { children: ReactNode }) {
   const [lista, setLista] = useState<Toast[]>([])
   const sig = useRef(0)
 
-  const avisar = useCallback((texto: string, tono: Toast['tono'] = 'ok') => {
+  const avisar = useCallback<Avisar>((texto, tono = 'ok', accion) => {
     const id = ++sig.current
-    setLista((l) => [...l.slice(-2), { id, texto, tono }])
-    setTimeout(() => setLista((l) => l.filter((t) => t.id !== id)), tono === 'error' ? 5000 : 2800)
+    setLista((l) => [...l.slice(-2), { id, texto, tono, accion }])
+    setTimeout(() => setLista((l) => l.filter((t) => t.id !== id)), tono === 'error' ? 5000 : accion ? 5000 : 2800)
   }, [])
 
   return (
@@ -39,6 +47,18 @@ export function ProveedorAvisos({ children }: { children: ReactNode }) {
             >
               {t.tono === 'ok' ? <CheckCircle size={20} weight="fill" /> : <WarningCircle size={20} weight="fill" />}
               {t.texto}
+              {t.accion && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    t.accion!.alPulsar()
+                    setLista((l) => l.filter((x) => x.id !== t.id))
+                  }}
+                  className="pointer-events-auto -my-2 -mr-3 ml-1 h-10 rounded-full px-4 font-semibold underline-offset-2 hover:underline"
+                >
+                  {t.accion.texto}
+                </button>
+              )}
             </div>
           ))}
         </div>,

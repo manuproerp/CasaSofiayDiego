@@ -1,4 +1,4 @@
-import { BookOpen, CalendarBlank, ChartPieSlice, CookingPot, GearSix, House, ListHeart, Plus, Receipt, ShoppingCart, Target, Tray, Wallet, type Icon } from '@phosphor-icons/react'
+import { Armchair, BookOpen, CalendarBlank, ChartPieSlice, CookingPot, GearSix, House, ListChecks, ListHeart, Plus, Receipt, ShoppingCart, Suitcase, Target, Tray, Wallet, type Icon } from '@phosphor-icons/react'
 import type { ReactNode } from 'react'
 import { Link, NavLink, useLocation } from 'react-router-dom'
 import { usePorAprobar } from '@/componentes/gastos/Aprobaciones'
@@ -17,7 +17,7 @@ interface ItemNav {
   insignia?: boolean
 }
 
-/** Navegación. Cocina y Casa se agregan en los siguientes bloques. */
+/** Navegación. Casa crece en el bloque 5 (mantenimiento, inventario…). */
 const NAV: ItemNav[] = [
   { a: '/', texto: 'Inicio', icono: House, conMes: true },
   { a: '/aprobaciones', texto: 'Por aprobar', icono: Tray, insignia: true },
@@ -28,9 +28,12 @@ const NAV: ItemNav[] = [
   { a: '/menu', texto: 'Menú', icono: CalendarBlank, grupo: 'Cocina' },
   { a: '/recetas', texto: 'Recetas', icono: BookOpen, grupo: 'Cocina' },
   { a: '/super', texto: 'Súper', icono: ShoppingCart, grupo: 'Cocina' },
+  { a: '/tareas', texto: 'Tareas', icono: ListChecks, grupo: 'Casa' },
+  { a: '/ausencias', texto: 'Ausencias', icono: Suitcase, grupo: 'Casa' },
 ]
 const RUTAS_DINERO = ['/gastos', '/presupuesto', '/wishlist', '/metas']
 const RUTAS_COCINA = ['/menu', '/recetas', '/super']
+const RUTAS_CASA = ['/tareas', '/ausencias']
 
 function Insignia({ n, className }: { n: number; className?: string }) {
   if (!n) return null
@@ -83,7 +86,11 @@ function EnlaceLateral({ item, n = 0 }: { item: ItemNav; n?: number }) {
             {item.insignia && <Insignia n={n} className="absolute -top-2 -right-3 lg:hidden" />}
           </span>
           <span className="text-center leading-tight lg:flex-1 lg:text-left">{item.texto}</span>
-          {item.insignia && <Insignia n={n} className="hidden lg:inline-flex" />}
+          {item.insignia && n > 0 && (
+            <span className="hidden lg:inline-flex">
+              <Insignia n={n} />
+            </span>
+          )}
         </>
       )}
     </NavLink>
@@ -96,13 +103,13 @@ function BarraLateral() {
   const { personas } = usePersonas()
   const grupos = [...new Set(NAV.map((n) => n.grupo ?? ''))]
   return (
-    <aside className="sticky top-0 hidden h-[100dvh] w-[96px] shrink-0 flex-col bg-hero px-3 pt-6 pb-5 md:flex lg:w-[248px] lg:px-4">
+    <aside className="sticky top-0 hidden h-[100dvh] w-[96px] shrink-0 flex-col bg-hero px-3 pt-5 pb-4 md:flex lg:w-[248px] lg:px-4">
       <Marca />
-      <nav className="-mx-1 mt-6 flex min-h-0 flex-1 flex-col gap-1.5 overflow-y-auto px-1 pb-2" aria-label="Principal">
+      <nav className="-mx-1 mt-4 flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto px-1 pb-4 [mask-image:linear-gradient(to_bottom,black_calc(100%-20px),transparent)]" aria-label="Principal">
         {grupos.map((g) => (
-          <div key={g} className="flex flex-col gap-1.5">
+          <div key={g} className="flex flex-col gap-1">
             {g && (
-              <span className="mt-4 hidden px-3.5 pb-1 text-[11px] font-semibold tracking-[0.12em] text-sobre-hero-2/70 uppercase lg:block">
+              <span className="mt-2 hidden px-3.5 pb-0.5 text-[11px] font-semibold tracking-[0.12em] text-sobre-hero-2/70 uppercase lg:block">
                 {g}
               </span>
             )}
@@ -113,18 +120,27 @@ function BarraLateral() {
           </div>
         ))}
       </nav>
-      <div className="flex flex-col gap-3">
-        <EnlaceLateral item={AJUSTES} />
-        {yo && (
-          <div className="flex items-center justify-center gap-3 border-t border-sobre-hero/10 pt-4 lg:justify-start lg:px-2">
-            <Avatar persona={yo} indice={Math.max(0, personas.findIndex((p) => p.id === yo.id))} tamano={36} className="!ring-sobre-hero/20" />
-            <span className="hidden min-w-0 flex-col leading-tight lg:flex">
-              <span className="truncate text-sm font-medium text-sobre-hero">{yo.nombre}</span>
-              <span className="truncate text-[12px] text-sobre-hero-2">{yo.rol === 'casa' ? 'Tablet de la casa' : 'Sesión iniciada'}</span>
-            </span>
-          </div>
+      <NavLink
+        to="/ajustes"
+        className={({ isActive }) =>
+          cx(
+            'pulsable mt-1 flex min-h-14 flex-col items-center justify-center gap-1 rounded-[16px] border-t border-sobre-hero/10 px-2 pt-3 pb-2 text-[12px] font-medium',
+            'lg:flex-row lg:justify-start lg:gap-3 lg:px-2.5',
+            isActive ? 'bg-sobre-hero text-hero' : 'text-sobre-hero-2 hover:bg-sobre-hero/10 hover:text-sobre-hero',
+          )
+        }
+      >
+        {yo ? (
+          <Avatar persona={yo} indice={Math.max(0, personas.findIndex((p) => p.id === yo.id))} tamano={34} className="!ring-sobre-hero/20" />
+        ) : (
+          <GearSix size={24} />
         )}
-      </div>
+        <span className="flex min-w-0 flex-col leading-tight lg:flex-1">
+          <span className="hidden truncate text-sm font-medium lg:block">{yo?.nombre ?? 'Ajustes'}</span>
+          <span className="truncate text-center lg:text-left lg:text-[12px] lg:opacity-80">Ajustes</span>
+        </span>
+        <GearSix size={20} className="hidden shrink-0 opacity-70 lg:block" />
+      </NavLink>
     </aside>
   )
 }
@@ -137,7 +153,7 @@ function BarraInferior() {
     { a: '/gastos', texto: 'Dinero', icono: Wallet, activo: RUTAS_DINERO.some((r) => pathname.startsWith(r)) },
     null,
     { a: '/menu', texto: 'Cocina', icono: CookingPot, activo: RUTAS_COCINA.some((r) => pathname.startsWith(r)) },
-    { a: '/ajustes', texto: 'Ajustes', icono: GearSix, activo: pathname.startsWith('/ajustes') },
+    { a: '/tareas', texto: 'Casa', icono: Armchair, activo: RUTAS_CASA.some((r) => pathname.startsWith(r)) },
   ]
   return (
     <nav
@@ -180,6 +196,27 @@ function BarraInferior() {
   )
 }
 
+/** En el celular, Ajustes se abre desde el avatar del encabezado */
+function AvatarAjustes() {
+  const { yo } = useYo()
+  const { personas } = usePersonas()
+  const { pathname } = useLocation()
+  return (
+    <Link
+      to="/ajustes"
+      aria-label="Ajustes"
+      aria-current={pathname.startsWith('/ajustes') ? 'page' : undefined}
+      className="flex size-11 shrink-0 items-center justify-center rounded-full md:hidden"
+    >
+      {yo ? (
+        <Avatar persona={yo} indice={Math.max(0, personas.findIndex((p) => p.id === yo.id))} tamano={34} className="!ring-0" />
+      ) : (
+        <GearSix size={24} className="text-texto-2" />
+      )}
+    </Link>
+  )
+}
+
 /** Campana de aprobaciones para el encabezado del celular */
 function CampanaAprobar() {
   const { items } = usePorAprobar()
@@ -213,6 +250,7 @@ export function Shell({ children }: { children: ReactNode }) {
             <div className="flex items-center gap-2 md:gap-4">
               {actual?.conMes && <SelectorMes className="-mr-2 md:mr-0" />}
               {!actual?.conMes && pathname !== '/aprobaciones' && <CampanaAprobar />}
+              {pathname !== '/ajustes' && <AvatarAjustes />}
               <div className="hidden md:block">
                 <Boton icono={Plus} onClick={() => registrar()}>
                   Registrar gasto
