@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="112" fill="#1f4d3a"/>
+  <g fill="none" stroke="#f3f1ea" stroke-opacity="0.12" stroke-width="3">
+    <circle cx="430" cy="430" r="170"/>
+    <circle cx="430" cy="430" r="120"/>
+  </g>
+  <text x="256" y="300" text-anchor="middle" font-family="Geist, Helvetica Neue, Arial, sans-serif" font-size="168" font-weight="600" letter-spacing="-8" fill="#f3f1ea">S<tspan fill="#b9cfc2">&amp;</tspan>D</text>
+</svg>

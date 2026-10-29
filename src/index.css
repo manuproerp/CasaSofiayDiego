@@ -1,0 +1,218 @@
+@import "@fontsource-variable/geist";
+@import "@fontsource-variable/geist-mono";
+@import "tailwindcss";
+
+/* ───────────── Tokens · Casa Sofía y Diego ─────────────
+   Verde bosque como único acento, fondo crema, superficies blancas.
+   Ámbar = cerca del límite. Rojo terroso = excedido. */
+
+:root {
+  --fondo: #f6f4ee;
+  --superficie: #ffffff;
+  --superficie-2: #efede5;
+  --borde: #e6e2d7;
+  --borde-fuerte: #d6d1c3;
+  --texto: #1c1f1d;
+  --texto-2: #5d625c;
+  --texto-3: #8b8f87;
+
+  --primario: #1f4d3a;
+  --primario-hover: #183d2e;
+  --sobre-primario: #f6f4ee;
+  --primario-suave: #e2ebe4;
+
+  --hero: #1f4d3a;
+  --hero-2: #2a5e48;
+  --sobre-hero: #f3f1ea;
+  --sobre-hero-2: #b9cfc2;
+
+  --v900: #163829;
+  --v700: #1f4d3a;
+  --v500: #3f7a5f;
+  --v400: #6b9c84;
+  --v300: #9dbfae;
+  --v200: #c9dcd1;
+  --v100: #e2ebe4;
+
+  --ambar: #9a6210;
+  --ambar-barra: #c98a24;
+  --ambar-suave: #f5e8d0;
+  --rojo: #a3432f;
+  --rojo-barra: #b9563f;
+  --rojo-suave: #f4dfd8;
+
+  --sombra-tinte: 31 77 58;
+  color-scheme: light;
+}
+
+:root[data-tema="oscuro"] {
+  --fondo: #0f1311;
+  --superficie: #161b18;
+  --superficie-2: #1d231f;
+  --borde: #262d28;
+  --borde-fuerte: #343c36;
+  --texto: #e8e9e3;
+  --texto-2: #a2a79e;
+  --texto-3: #727870;
+
+  --primario: #82b69a;
+  --primario-hover: #95c4aa;
+  --sobre-primario: #0e1a14;
+  --primario-suave: #1c2b23;
+
+  --hero: #1b3d2f;
+  --hero-2: #24503d;
+  --sobre-hero: #eef0e8;
+  --sobre-hero-2: #9fbcac;
+
+  --v900: #c9dcd1;
+  --v700: #9dbfae;
+  --v500: #6b9c84;
+  --v400: #4f8169;
+  --v300: #3a6450;
+  --v200: #2a4a3b;
+  --v100: #1c2b23;
+
+  --ambar: #e0ac5b;
+  --ambar-barra: #c98a24;
+  --ambar-suave: #2e2416;
+  --rojo: #e08b76;
+  --rojo-barra: #c3634b;
+  --rojo-suave: #2f1c17;
+
+  --sombra-tinte: 0 0 0;
+  color-scheme: dark;
+}
+
+@theme inline {
+  --font-sans: "Geist Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Geist Mono Variable", ui-monospace, monospace;
+
+  --color-fondo: var(--fondo);
+  --color-superficie: var(--superficie);
+  --color-superficie-2: var(--superficie-2);
+  --color-borde: var(--borde);
+  --color-borde-fuerte: var(--borde-fuerte);
+  --color-texto: var(--texto);
+  --color-texto-2: var(--texto-2);
+  --color-texto-3: var(--texto-3);
+  --color-primario: var(--primario);
+  --color-primario-hover: var(--primario-hover);
+  --color-sobre-primario: var(--sobre-primario);
+  --color-primario-suave: var(--primario-suave);
+  --color-hero: var(--hero);
+  --color-hero-2: var(--hero-2);
+  --color-sobre-hero: var(--sobre-hero);
+  --color-sobre-hero-2: var(--sobre-hero-2);
+  --color-v900: var(--v900);
+  --color-v700: var(--v700);
+  --color-v500: var(--v500);
+  --color-v400: var(--v400);
+  --color-v300: var(--v300);
+  --color-v200: var(--v200);
+  --color-v100: var(--v100);
+  --color-ambar: var(--ambar);
+  --color-ambar-barra: var(--ambar-barra);
+  --color-ambar-suave: var(--ambar-suave);
+  --color-rojo: var(--rojo);
+  --color-rojo-barra: var(--rojo-barra);
+  --color-rojo-suave: var(--rojo-suave);
+
+  --radius-tarjeta: 22px;
+  --radius-control: 14px;
+
+  --shadow-tarjeta: 0 1px 0 rgb(var(--sombra-tinte) / 0.04), 0 18px 40px -24px rgb(var(--sombra-tinte) / 0.22);
+  --shadow-flotante: 0 24px 60px -20px rgb(var(--sombra-tinte) / 0.35);
+
+  --ease-suave: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@layer base {
+  html {
+    -webkit-tap-highlight-color: transparent;
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    background: var(--fondo);
+    color: var(--texto);
+    font-family: var(--font-sans);
+    font-feature-settings: "ss01", "cv11";
+    -webkit-font-smoothing: antialiased;
+    overscroll-behavior-y: none;
+  }
+  button,
+  [role="button"] {
+    cursor: pointer;
+    touch-action: manipulation;
+  }
+  :focus-visible {
+    outline: 2px solid var(--primario);
+    outline-offset: 2px;
+  }
+  input[type="number"]::-webkit-inner-spin-button,
+  input[type="number"]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+}
+
+@utility num {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
+
+@utility pulsable {
+  transition: transform 0.18s var(--ease-suave), background-color 0.18s, border-color 0.18s, color 0.18s, opacity 0.18s;
+  &:active:not(:disabled) {
+    transform: scale(0.98);
+  }
+}
+
+/* Skeleton: brillo sutil, sin animación si el usuario prefiere menos movimiento */
+@utility esqueleto {
+  background: linear-gradient(90deg, var(--superficie-2) 0%, var(--borde) 50%, var(--superficie-2) 100%);
+  background-size: 200% 100%;
+  animation: brillo 1.6s ease-in-out infinite;
+  border-radius: 10px;
+}
+
+@keyframes brillo {
+  from { background-position: 100% 0; }
+  to { background-position: -100% 0; }
+}
+
+@keyframes entrar {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes subir {
+  from { transform: translateY(100%); }
+  to { transform: none; }
+}
+
+@keyframes temblar {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-6px); }
+  75% { transform: translateX(6px); }
+}
+
+@keyframes aparecer {
+  from { opacity: 0; transform: translateY(8px) scale(0.985); }
+  to { opacity: 1; transform: none; }
+}
+
+@utility entrar {
+  animation: entrar 0.45s var(--ease-suave) both;
+  animation-delay: calc(var(--i, 0) * 50ms);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
